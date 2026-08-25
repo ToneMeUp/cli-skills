@@ -605,6 +605,40 @@ vendor/                 the packed @illumify/sdk only when --sdk points at a loc
 **`@illumify/sdk`'s own `README.md` is in `node_modules/@illumify/sdk/README.md`** and is the
 reference for the data API. These skills do not restate it.
 
+## Showing the catalogue: cards, a table, or the spreadsheet
+
+Three answers, and which one is right depends on what the owner asked for — not on what looks
+impressive.
+
+**Cards, by default.** A catalogue of products with an image, a name and a price is a card grid.
+Reach for this unless you were told otherwise. It needs no library.
+
+**A plain HTML `<table>` when they asked for a table.** Order forms, price lists, anything read
+row by row. Write the table yourself: `<table>` with real `<thead>`/`<tbody>`, and CSS. A dependency
+here buys nothing a browser does not already do, and it costs every shopper the download.
+
+**`@illumify/react-data-grid` only when they said "spreadsheet".** Frozen columns, cell editing,
+fill handles, virtualised scrolling over thousands of rows — a grid someone works *in*, not a table
+they read. That is the one case where the weight is worth paying.
+
+```bash
+npm i @illumify/react-data-grid @mui/material @mui/icons-material @emotion/react @emotion/styled
+```
+
+**The peers are not optional and not installed for you.** The package declares `react`,
+`@mui/material`, `@mui/icons-material`, `@emotion/react` and `@emotion/styled` as peer dependencies
+so a project that already has MUI does not end up with two copies — two Emotion instances mean two
+style contexts, and the symptom is styles silently not applying. A scaffolded Illumify project has
+none of them, so install all five or the grid will not render.
+
+**Know what you are spending.** The package unpacks to about 860 KB before its dependencies, and it
+brings `@tanstack/react-virtual`, `zustand`, `dayjs` and two `@atlaskit/pragmatic-drag-and-drop`
+packages, on top of the MUI and Emotion the peers require. On a storefront that is a real cost to a
+shopper on a phone, and it is the reason this is the third answer rather than the first.
+
+If you are unsure which the owner meant, ask. "Table" and "spreadsheet" are different requests, and
+guessing the heavy one is the expensive mistake.
+
 ## What you must not do
 
 - **Do not declare only `/` and expect deep routes to reach it.** Matching is exact, and there is no
