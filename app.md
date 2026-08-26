@@ -23,9 +23,18 @@ availability, and who is looking.
 These are Illumify rules, not a React style guide:
 
 - **Mirror the route list.** Put one page module in `src/pages/` for each route declared in
-  `illumify.config.ts`. Routes match exactly and never fall through, so a page module without a
-  declaration is visible instead of becoming a silent 404, and a declaration without its module is
-  visible before previewing.
+  `illumify.config.ts`, whatever those routes are served by. The module is the unit somebody edits,
+  replaces or deletes later — and "somebody" is usually a coding agent working from a description of
+  one page, not a person who has read the file. A route that lives inside a shared component cannot
+  be handed over that way.
+
+  **This holds when every route declares the same `entry`.** Client-side routing is the normal case,
+  not an exception to the rule: several routes serving one built `index.html` is expected, and it
+  changes nothing about where the code for each of them belongs. The routing table and the file
+  layout answer different questions.
+
+  Routes also match exactly and never fall through, so mirroring keeps a route without its module,
+  and a module nobody declared, visible before a preview rather than as a silent 404.
 - **Keep catalogue access in one module.** Put the four `@illumify/sdk` catalogue reads and the
   pager in `src/catalog/`, then have pages call that module. Its `null` money,
   `recommendedOfferId` and `409`-restart rules are sharp; copies in components eventually render the
