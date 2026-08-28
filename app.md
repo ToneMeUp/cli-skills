@@ -46,15 +46,21 @@ These are Illumify rules, not a React style guide:
 The default scaffold remains deliberately empty: these rules describe where the owner's pages and
 catalogue code go once they exist; they do not choose a page, route or feature.
 
-### A theme is uploaded, and uploading is not publishing
+### A theme is a name holding immutable revisions, and uploading is not publishing
 
-A theme is **immutable** and is named by a hash of its own content. Uploading one creates it and
-changes nothing a shopper can reach. What a shopper is served is decided by an **assignment** on a
-storefront site, and moving an assignment is an administrative act performed in the ERP by whoever
+A theme carries the display name you chose and a stack of **immutable revisions**. Uploading appends
+one; nothing is ever replaced or overwritten. What a shopper is served is decided by an **assignment**
+on a storefront site, and moving an assignment is an administrative act performed in the ERP by whoever
 owns the site. No command in this CLI can move one.
 
-So "uploaded" never means "live", and if you report it that way you are wrong. See
-`illumify skills get deploy`.
+**But "uploaded never means live" is retired — changed 2026-08-28.** An assignment points at a theme,
+with an *optional* pin to a particular revision. Unpinned, which is the default, it serves the newest
+revision on every request. So if a site already serves this theme, appending a revision to it is live
+immediately, with no assignment moved.
+
+So do not report either way from the fact of a successful upload. `illumify upload` prints which of the
+two happened — and says "cannot tell" rather than guessing when it cannot. Report what that line says.
+See `illumify skills get deploy`.
 
 ### The site is not yours to create, and neither is its slug
 
@@ -97,9 +103,11 @@ the ERP by whoever owns it. A file in your project has no say in it, so the fiel
 rather than being accepted and ignored. What your page *can* read is which kind of shopper it is
 serving right now — `shopperContext`, below.
 
-**Why `themeKey` is not yours to write.** `illumify build` derives it from this file plus every byte
-of the build output. Editing this file therefore changes the theme's identity, and two builds of the
-same source are one theme. That is the platform's rule, not a quirk of the tooling.
+**Why `themeKey` is not yours to write.** `illumify build` derives one from this file plus every byte
+of the build output, and the *server* derives its own for every revision it stores — a value you cannot
+compute and should never compare with the local one. Neither is a field for you to set. What is worth
+knowing is the consequence: editing this file changes the theme's content identity, so a rebuild is a
+new revision even when every page byte is the same.
 
 ## Route matching is EXACT, and nothing falls through
 
@@ -206,6 +214,8 @@ Four properties are worth stating rather than discovering:
   version-2 runtime under `Preview` genuinely has none of the four.
 - **`themeKey` is absent under `illumify dev`**, because nothing has been uploaded when previewing
   and a made-up 64-character key would name nothing while reading as an answer. Do not depend on it.
+  When it *is* present it is the key of the **revision** being served, which the server minted — not
+  the key `illumify build` printed, and not stable across uploads of the same theme.
 - **The four cart methods are absent — not `null` — under `accessMode: "Preview"`.** A hosted preview
   cannot write a cart or place an order, by construction. Branch on `accessMode` and render a
   read-only cart; do not call and catch.
