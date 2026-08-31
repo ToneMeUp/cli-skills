@@ -566,13 +566,15 @@ destination at all. Read its length the way you read `facilityList`'s: empty mea
 this field*, not *the data failed to load*. Anonymous preview sessions do return the list, so a
 hosted preview exercises the real form.
 
-**Two things about availability, as of 2026-08-31.** The field arrives with `Main` `77a2ae0312`,
-which is on the release branch and reaches QA with the next deployment — so against QA today
-`stateList` may not be there yet, and a theme should treat an absent list the same as an empty one.
-And **`@illumify/sdk` has not published the type**, so `session.stateList` does not type-check
-against the SDK's `CatalogSession` until it does; read it through a narrowed local type until the
-SDK catches up rather than widening it with a cast you will forget to remove. `illumify dev
---fixtures` serves the list now, on the anonymous branch only.
+**One caveat, as of 2026-08-31.** The field arrives with `Main` `77a2ae0312`, which is now on the
+QA branch — but a branch carrying it and an environment running it are two things, so until the
+deployment you are pointed at has picked it up, **treat an absent `stateList` exactly as you treat an
+empty one**. That is the same check you already need for signed-in shoppers, so it costs nothing.
+
+**`@illumify/sdk` has not published the type yet**, so `session.stateList` does not type-check
+against the SDK's `CatalogSession`. Read it through a narrowed local type until the SDK catches up,
+rather than widening it with a cast you will forget to remove. `illumify dev --fixtures` serves the
+list now, on the anonymous branch only.
 
 ### A shopper with more than one facility has no facility until your page picks one
 
