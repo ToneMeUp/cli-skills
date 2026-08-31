@@ -661,8 +661,8 @@ case-colliding paths.
 AGENTS.md / CLAUDE.md   how the platform behaves; reference, not a brief
 README.md               for the human
 illumify.config.ts      your pages
-illumify.link.json      which storefront site this is built for, per environment. Written by
-                        `illumify link`, committed, not hand-edited
+illumify.link.json      storefront site plus optional remembered theme name, per environment.
+                        Written by `link`/`upload`; only `displayName` is deliberately editable
 vite.config.ts          one platform-owned line: base: "./"
 index.html              your HTML entry
 src/storefront.d.ts     the injected global's types. Read it; do not restate it
