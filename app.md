@@ -523,6 +523,57 @@ checked-out cart is `409 CartCheckedOut`, so a shopper who wants to buy again st
   lines. With one guest destination the allocation map may be omitted; with more than one, every line
   must be allocated and every destination used, because the server will not infer one.
 
+### The guest destination's State is an id you were given, not a string you compose
+
+A guest destination is one entry in `guestFacilityList`, and every field on it is text you collected
+— company name, contact, licence number, address — **except one**. `stateId` is a **number**, and it
+is the id of a row in the ERP's own state table. There is no spelling of `"CA"` or `"California"`
+that the server will accept.
+
+The list comes back on the session you already read:
+
+```ts
+const { stateList } = await getSession();
+// stateList: Array<{ id: number; name: string; shortName: string }>
+```
+
+`id` is what you submit, `name` is what a shopper reads, `shortName` is the two-letter postal
+abbreviation. The list is **US states only, ordered by name**, so render it in the order it arrives
+and it is already alphabetical.
+
+**Do not go looking for a state endpoint.** `CompanyAccess/GetStateList` exists in the ERP, and it
+is not the CSP that stops you calling it — the ERP is the same origin as your document, so
+`connect-src 'self'` permits the request. What stops you is authority: it is an authenticated
+management operation, outside the route families the storefront's anonymous allowance covers, and a
+shopper carries no credential for it. The retired preauth Storefront endpoint is gone. The session is
+the only source, and it is a call your page already makes.
+
+**Never hardcode an id.** The numbers are database rows, not a standard, and they are not guaranteed
+to match between environments. A theme that reads `stateList` and posts the selected entry's `id`
+back is correct everywhere; one that ships `stateId: 12` because that is what a dropdown showed
+during development is wrong in every environment but the one it was built against, and nothing will
+say so — the order is simply filed against the wrong state.
+
+**Submit the same id in both phases.** `prepareCheckout` and `checkout` each carry the full
+`guestFacilityList`, so the chosen `stateId` goes in both. `checkout` resubmits everything and
+refuses if any of it has moved, so changing the State between the two calls invalidates the prepared
+token rather than quietly updating the destination: collect the address once, then send the same
+values twice.
+
+**An empty `stateList` is the contract, not a gap.** A signed-in or customer-link shopper gets `[]`,
+because they check out against facilities the seller already allowed them and cannot submit a guest
+destination at all. Read its length the way you read `facilityList`'s: empty means *do not render
+this field*, not *the data failed to load*. Anonymous preview sessions do return the list, so a
+hosted preview exercises the real form.
+
+**Two things about availability, as of 2026-08-31.** The field arrives with `Main` `77a2ae0312`,
+which is on the release branch and reaches QA with the next deployment — so against QA today
+`stateList` may not be there yet, and a theme should treat an absent list the same as an empty one.
+And **`@illumify/sdk` has not published the type**, so `session.stateList` does not type-check
+against the SDK's `CatalogSession` until it does; read it through a narrowed local type until the
+SDK catches up rather than widening it with a cast you will forget to remove. `illumify dev
+--fixtures` serves the list now, on the anonymous branch only.
+
 ### A shopper with more than one facility has no facility until your page picks one
 
 **A theme with no facility selector shows a multi-facility shopper a catalogue with no prices and no

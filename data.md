@@ -363,12 +363,12 @@ everything else is identical, so a detail view does not need the list response. 
 non-positive `skuId` throws a `RangeError` locally rather than reaching the server as a 404 that would
 read as "no such product".
 
-## `getSession()` — call it for the four things the global does not carry
+## `getSession()` — call it for the five things the global does not carry
 
 `shopperContext` and `themeKey` are already on `window.IllumifyStorefront.config`, so a page that reads
 only those does not need this call. (`slug` is **not** on the injected config — nothing there names the
 site. It arrives here, and it is a label rather than something to build a URL from: every URL you need
-is already on `config`.) These three are the reason to call:
+is already on `config`.) These five are the reason to call:
 
 | | |
 | --- | --- |
@@ -376,6 +376,7 @@ is already on `config`.) These three are the reason to call:
 | `currencyCode` | ISO 4217 for every money value in the catalogue |
 | `accessPolicy` | `customerLinkEnabled`, `signInEnabled`, `signInRequiresInvite` |
 | `facilityList` | The buyer's eligible facilities, each `{ customerFacilityKey, name }`. **Read its length before rendering a price** — see fact 9. Empty for a public shopper |
+| `stateList` | The US states a **guest** may name a destination in, each `{ id, name, shortName }`, ordered by name. Submit the chosen `id` as `guestFacilityList[n].stateId`. **Empty for a signed-in or customer-link shopper** — they cannot submit a guest destination — so read its length before rendering the field. `illumify skills get app` has the whole rule |
 
 **`session.themeKey` is `null` under `illumify dev --fixtures`** — nothing has been uploaded, and a
 made-up 64-hex value would name nothing while reading as an answer. The type says `string`, so a page
