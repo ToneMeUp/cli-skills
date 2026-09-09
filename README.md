@@ -34,9 +34,10 @@ branch protection on `main` does not extend to them.
 
 ## If this repository is unreachable
 
-Every CLI carries its own copy of these three files, compiled in. A failed fetch prints one line
-saying so and then prints the skill anyway. Nobody is ever left without instructions — but they are
-left with the version their binary was built with, which is why this is a fallback and not a plan.
+The CLI carries no copy of these files. A failed fetch — no ref answered, a rate limit, a DNS failure —
+is an error that names the refs it tried and tells the agent to stop and report it rather than work
+around it. That is deliberate: a stale compiled-in copy would read as instructions and be followed,
+which is the failure this design exists to avoid.
 
 ## What must never appear here
 

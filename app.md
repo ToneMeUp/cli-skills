@@ -748,9 +748,9 @@ guessing the heavy one is the expensive mistake.
   CSP forbids all four. Read `illumify skills get data` before planning a feature, not after.
 - **Do not promise a discount for signing in.** Identified is not the same question as priced.
 - **Do not put a credential in this project as an agent.** `.env` may contain the owner's
-  `ILLUMIFY_API_KEY` for the CLI's supported lookup, and its clearly marked `ILLUMIFY_DEV_API_KEY`
-  slot is for the dev proxy; `.env` is gitignored. Neither key belongs in a theme bundle. If you are an
-  agent: never ask for either key, read either value, or accept one pasted to you — see
+  `ILLUMIFY_API_KEY`, which `upload` and the dev proxy share; `.env` is gitignored. The key does not
+  belong in a theme bundle. If you are an agent: never ask for it, read its value, or accept one pasted
+  to you — see
   `illumify skills get deploy`.
 - **Do not report an upload as a deployment.** Uploading creates a theme; a shopper reaches whatever
   the site's assignment names, and only an administrator can change that.
