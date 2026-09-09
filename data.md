@@ -442,9 +442,9 @@ prices than production, with nothing anywhere saying so.
 
 **If you need to reach an Illumify service operation that is not one of these four reads, that is not
 a storefront theme's job.** A deployed shopper holds no ERP session, so such a call cannot work for the
-audience the site is for. `illumify dev` can credit one during development from
-`ILLUMIFY_DEV_API_KEY` in `.env` — **`illumify skills get deploy` has that key's rules, and they
-matter**; do not read the value, do not fill it in, and do not weaken error handling you wrote for a
+audience the site is for. `illumify dev` can credit one during development from the owner's
+`ILLUMIFY_API_KEY` — the same key `upload` uses — **and `illumify skills get deploy` has that key's
+rules, which matter**; do not read the value, do not fill it in, and do not weaken error handling you wrote for a
 buyer in order to make your own preview work.
 
 ## Local development reads real data, unless you ask for fixtures

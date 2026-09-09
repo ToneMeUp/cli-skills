@@ -77,8 +77,8 @@ illumify link --profit-center <id>
 ```
 
 `--profit-center` is required; the ERP resolves the root company and the site's slug from it. Optional
-`--company <id>` and `--slug <site-slug>` are assertions: a disagreement is refused. `--env` and `--host`
-select the environment and host.
+`--company <id>` and `--slug <site-slug>` are assertions: a disagreement is refused. `--env` selects the
+environment and `--api-host` (alias `--host`) overrides the host it implies.
 
 It resolves the site and writes `illumify.link.json`. Run it once per environment — the ids are
 meaningful only on the system they came from, so one environment's entry is never borrowed for another.
@@ -108,37 +108,44 @@ changes an assignment. What it does instead is *report*:
 - whether `signInRequiresInvite` is set, which **fails closed today**: invite administration and
   claiming are not implemented, so sign-in on such a site admits nobody.
 
-Commit `illumify.link.json`. Its site ids, slug and host are ERP answers: do not hand-edit those; re-run
+Commit `illumify.link.json`. Its site ids and slug are ERP answers: do not hand-edit those; re-run
 `illumify link`, which preserves a remembered display name. The optional `displayName` is the one field
 you may edit deliberately to make the next upload address another logical theme.
 
 ## `.env`
 
 ```
-ILLUMIFY_ENV=<segment>                        # a URL SEGMENT, not an environment name
-ILLUMIFY_API_HOST=https://illumify.example    # never guessed
-ILLUMIFY_BACKEND_SHAPE=illumify               # or local-backend
-ILLUMIFY_DEV_API_KEY=                         # blank; a human's to fill. Publish key rules are below
+ILLUMIFY_ENV=qa                               # local | dev | qa | prod — the environment's NAME
+ILLUMIFY_API_KEY=                             # blank; a human's to fill. Rules below
 ```
 
-The first three are written by `illumify new` from **one** flag, `--env local|dev|qa|prod`: it decides
-the segment, the host and the backend shape together, so they cannot describe a combination that does
-not exist. `--api-host` overrides the host and nothing else. Two consequences:
+That is the whole file a fresh scaffold writes. `illumify new` records the **one** flag it was given,
+`--env local|dev|qa|prod`, and everything else is derived from it at run time: the URL segment, the
+host and the backend shape live in one table inside the CLI, so `.env` cannot describe a combination
+that does not exist. Two consequences:
 
-- **`ILLUMIFY_ENV` is a URL segment, not the environment's name.** A document is served at
-  `/{segment}/services/main/storefront/{slug}` and its data under that path plus `/api`.
-  `--env local` writes `dev` here, because that is the segment the local stack answers on.
-- **There is no flag for setting the shape against a different environment.** `--env qa` with a
-  developer machine's path rewriting is a contradiction rather than a configuration, and it used to be
-  writable. Do not reconstruct it by editing `.env`.
+- **`ILLUMIFY_ENV` is the environment's name, and the URL segment is derived from it.** A document is
+  served at `/{segment}/services/main/storefront/{slug}` and its data under that path plus `/api`. For
+  `local` the segment is `dev`, because that is the one the local stack answers on — the value you
+  wrote is not always the word in the URL.
+- **There is no setting for the host or the shape, and no flag for setting the shape against a
+  different environment.** `--env qa` with a developer machine's path rewriting is a contradiction
+  rather than a configuration, and it used to be writable. An old `ILLUMIFY_BACKEND_SHAPE` line that
+  disagrees with `ILLUMIFY_ENV` is refused rather than obeyed; one that agrees is ignored. Do not
+  reconstruct the shape by editing `.env`.
+
+`ILLUMIFY_API_HOST` appears **only** when the project was scaffolded with `--api-host`, and it is an
+override of the host the environment implies, not a required setting. If your `.env` has no such line,
+that is correct. A value carrying a path — `https://host/qa/` — is wrong: the CLI appends the segment
+itself, and the request would go to `/qa/qa/…`.
 
 There is **no `ILLUMIFY_SLUG`** and no site id in `.env`. Those are the ERP's answers, and they live in
 `illumify.link.json`.
 
-`ILLUMIFY_SERVING_HOST` appears **only** in a project scaffolded with `--env local`, where previewing
-and uploading are genuinely two processes on two ports. In every real environment the two lanes are one
-origin, so the setting is absent — not empty, not commented out. If your `.env` has no such line, that
-is correct.
+`ILLUMIFY_SERVING_HOST` is an optional override of the *delivery* host, and the scaffold never writes
+it. The one case where previewing and uploading are genuinely two processes on two ports — a developer's
+machine, `--env local` — is derived from the environment like everything else. In every shared
+environment the two lanes are one origin. If your `.env` has no such line, that is correct.
 
 ### `.env` is generated output, and it is not an agent's to edit
 
@@ -160,7 +167,7 @@ illumify dev --slug=<other-site-slug>
 ```
 
 An explicit `--env` wins over `ILLUMIFY_ENV` in `.env` and says so with a one-line note on stderr; it
-does not refuse the combination. `--host` outranks the environment's implied host. A flag lasts one
+does not refuse the combination. `--api-host` outranks the environment's implied host. A flag lasts one
 run; an edit outlives it.
 
 Related, and for the same reason: **anything the scaffold generates that has to be hand-edited before
@@ -194,8 +201,7 @@ illumify dev --fixtures --shopper-context identified
 ```
 
 **No link, no credential, no network.** The catalog API is answered inside the `illumify dev` process:
-`ILLUMIFY_API_HOST` is not read, `ILLUMIFY_DEV_API_KEY` is not attached anywhere, and no request leaves
-the machine. Everything else is the same replica as always — the document is mounted under its real
+no host is read, `ILLUMIFY_API_KEY` is not attached anywhere, and no request leaves the machine. Everything else is the same replica as always — the document is mounted under its real
 prefix, routed by your `pages` with the same exact matching, and injected with the same bootstrap.
 
 So a project straight out of `illumify new` can be previewed **before a storefront site exists**, which
@@ -309,8 +315,8 @@ all.
 
 ### Path rewriting
 
-`--env local` writes `ILLUMIFY_BACKEND_SHAPE=local-backend`, which rewrites `/{env}/oauth2/` to
-`/oauth2/` and nothing else — **no service path is ever rewritten, under either shape.**
+`--env local` implies the local backend shape — nothing is written to `.env` for it — which rewrites
+`/{env}/oauth2/` to `/oauth2/` and nothing else — **no service path is ever rewritten, under either shape.**
 
 That absence is deliberate and was paid for. A development-only rewrite that compensates for a client
 defect makes the preview *less* faithful, not more: a working preview once hid a deployed site that
@@ -322,8 +328,9 @@ to add — but **verify the target exists before setting one.** A rewrite pointi
 backend no longer serves turns a legible 404 into a proxy's 403, which is harder to read and one layer
 further from the cause.
 
-A project written before the rename may carry `ILLUMIFY_PRESET`. `illumify dev` refuses rather than
-defaulting, and names the new spelling: the value is unchanged, only the key is.
+A project written before the shape was derived may carry `ILLUMIFY_PRESET` or `ILLUMIFY_BACKEND_SHAPE`.
+The first is refused, naming the `ILLUMIFY_ENV` value to set instead; the second is refused only when it
+disagrees with `ILLUMIFY_ENV`, and is otherwise ignored.
 
 ## `illumify build`
 
@@ -448,7 +455,7 @@ npm run upload                                                # reuse the rememb
 illumify upload --no-preview --preview-as-customer <id> --author-version 1.4.0
 ```
 
-Also: `--env`, `--host`.
+Also: `--env`, `--api-host`.
 
 **It builds the theme itself**, so you cannot upload a build made somewhere else. Before it builds it
 **reads the site from the ERP** and **looks up the flag or remembered display name**, so a wrong host, a
@@ -622,46 +629,34 @@ with no host and no key; a theme is a per-environment row id behind an authentic
 `--list-templates` answers offline from the templates built into this CLI, which `ThemeGetList` cannot
 do. They stay separate commands.
 
-## The upload credential
+## The credential: one key, three places
 
-`illumify upload` and `illumify link` need an Illumify credential. Understand what it is before you go
-looking for one: an API key here is a **full-rights ERP user credential** — no scopes, and no expiry at
-all. It is not an upload-only token and there is no lesser version of it.
+`illumify link`, `illumify upload`, `illumify themes` and the proxying lane of `illumify dev` share
+**one** credential, `ILLUMIFY_API_KEY`. Understand what it is before you go looking for one: an API key
+here is a **full-rights ERP user credential** — no scopes, and no expiry at all. It is not an
+upload-only token and there is no lesser version of it.
 
-So it belongs in the OS **keychain** on a developer machine — macOS Keychain, libsecret, Windows
-Credential Manager — or in a **masked secret** in CI. The CLI looks in this fixed order:
+The CLI looks in exactly three places, in this order, and the order is the same on localhost and on a
+shared environment:
 
-1. **A keychain entry stored for this exact host.** Set deliberately, so it wins everywhere.
-2. **A loopback placeholder, when the host is on this machine** — and this branch *returns*: nothing
-   below it is consulted for a loopback host.
-3. **The shared keychain entry** (account `default`).
-4. **`ILLUMIFY_API_KEY` in the process environment.** This is the CI source for a masked secret.
-5. **`ILLUMIFY_API_KEY` in the project's `.env`**, newly supported. It is still a secret and must not
-   be committed; the file is gitignored.
+1. **`--api-key <key>` on the command line.** One run. It lands in shell history and the process
+   list, which is why it exists for development and is not the documented way to hold a key.
+2. **`ILLUMIFY_API_KEY` in the process environment.** The CI source, from a masked secret.
+3. **`ILLUMIFY_API_KEY` in the project's gitignored `.env`.** The developer-machine source.
 
-Do not move or collapse these branches. The loopback return is deliberate: otherwise `illumify dev`
-could send a production key to localhost. The CLI prints the identity it is using before it uploads,
-so the consequential choice is visible.
+That is the whole list. There is **no OS keychain lookup, no saved session, no loopback placeholder and
+no `illumify login`** — those belonged to an earlier design and were switched off by the product owner;
+`login`, `logout` and `whoami` are not commands. A blank or `Bearer`-only value counts as absent, and a
+missing key stops a control-plane command before it builds anything, naming the two supported places.
+`ILLUMIFY_DEV_API_KEY`, the separate dev-proxy key of the earlier design, is **not read**: a project
+that still carries it has a line the CLI ignores and no credential.
 
-**A host on this machine is sent a placeholder rather than a credential**, so `illumify dev` and every
-read-only probe work with nothing configured. That is a convenience for reading, not a bypass: a local
-host running the real platform validates the credential and refuses the placeholder, so *uploading* to
-one still needs a real key. Because of branch 2, the only source that reaches a loopback host is a
-keychain entry for **that exact host**:
-
-```bash
-security add-generic-password -s illumify-cli -a http://localhost:<port> -w
-```
-
-The shared keychain entry and the environment variable deliberately stay on the remote path, so a real
-key is never sent to localhost by accident.
+The CLI prints which source it is using before it talks to the server, so the consequential choice is
+visible: `(credential: --api-key)`, `(credential: ILLUMIFY_API_KEY)` or `(credential: .env)`.
 
 **If a command's error mentions credentials, check the environment and the host first.** A redirect or a
 404 from the upload path is about the URL, not the key — and inventing a fake key to get past it is
 precisely the habit this section exists to prevent.
-
-`illumify login` / `logout` / `whoami` exist and are **parked**: built, tested and reachable, with no
-live caller routing an author through them today.
 
 ### If you are an agent working in this project
 
@@ -670,47 +665,39 @@ in this transcript, and in any log or context store behind it, permanently — a
 never expires and cannot be scoped down. There is nothing you can do afterwards that un-leaks it.
 
 **If a command fails with 401 or reports no credential, stop and hand back.** The remedy is a human
-action at their own terminal, and the CLI prints the exact command for it. Do not:
+action at their own terminal, and the CLI prints the exact setting for it. Do not:
 
 - write the key into `.env`, `.env.example`, a shell profile, a script, or any file;
 - echo, log, or repeat the value anywhere, including "just to check it";
 - work around a missing credential by looking for one elsewhere on the machine.
 
-Everything except uploading works without it. `illumify build`, `illumify handoff` and `illumify dev`
-need no credential at all — unless your pages call an authenticated Illumify operation, which is the
-**different** credential with different rules in the next section.
+**Do not read the value of `ILLUMIFY_API_KEY` either — unless the owner directly tells you to.** That
+exception is theirs to give and it is real; short of it, ask them to set the key and stop. The existing
+rule about `.env` is that you must not *edit* it. This key adds: do not *read* it, and do not put it in
+a message, a commit, a log, or a note. A value that reaches a transcript is leaked permanently, and
+**this key does not expire**, so there is no point at which the leak stops mattering. Revocation is the
+only remedy, and it is the owner's to perform.
 
-## Two different keys: publish and dev proxy
+Everything that talks to nothing works without it: `illumify build`, `illumify handoff` and
+`illumify dev --fixtures` need no credential at all.
 
-There are two different keys. **`ILLUMIFY_API_KEY` is the publish credential** for `illumify link` and
-`illumify upload`, looked up in the five-step order above. **`ILLUMIFY_DEV_API_KEY` is the dev proxy's
-bearer** for non-shopper service calls; it is not a publish credential. A blank `ILLUMIFY_DEV_API_KEY`
-slot looks configured but is not a usable bearer.
+## What `illumify dev` does with the same key
 
-**The anonymous catalog needs no credential at all.** Plain requests to `/api/session`, `/api/filters`
-and `/api/items` answer without an auth header. `illumify dev` therefore shows real catalog data and
-prices without either key. The publish key is for `link` and `upload` only.
-
-## `ILLUMIFY_DEV_API_KEY` — for pages that call an authenticated operation
-
-**The shopper API takes no credential at all, ever**, and `illumify dev` attaches nothing to it. If your
-pages only read the catalogue through `@illumify/sdk`, this section does not apply to you and the blank
-slot in `.env` is correct as it stands. Blank is normal for the anonymous catalog.
+**The shopper API takes no credential at all, ever**, and `illumify dev` attaches nothing to it. Plain
+requests to `/api/session`, `/api/filters` and `/api/items` answer without an auth header, so a preview
+shows real catalogue data and prices with `ILLUMIFY_API_KEY` blank. If your pages only read the
+catalogue through `@illumify/sdk`, the rest of this section does not apply to you and a blank slot in
+`.env` is correct as it stands.
 
 Anything **outside** the shopper API is a different matter. An ordinary Illumify service operation needs
-an ERP session, and `illumify dev` has none — so it will attach an **Illumify API key** upstream
-instead, on every non-anonymous service path:
-
-```
-ILLUMIFY_DEV_API_KEY=tone_live_...
-```
-
-The slot is already there, blank, in the `.env` the scaffold wrote.
+an ERP session, and `illumify dev` has none — so when `ILLUMIFY_API_KEY` is set it attaches that key
+upstream instead, on every non-shopper service path, and says so in its banner. The key never reaches
+the page: it travels from the dev process to the server and nowhere else.
 
 **Before you reach for it, ask whether the feature belongs in a theme at all.** A deployed shopper is a
-buyer, not an Illumify user, and holds no ERP session — so a call outside the four catalog reads cannot
+buyer, not an Illumify user, and holds no ERP session — so a call outside the catalogue reads cannot
 work for the audience the site is for. It will not start working later and there is no flag that makes
-it work. This key is for reaching data *during development*, not for building a shopper-facing feature
+it work. The key is for reaching data *during development*, not for building a shopper-facing feature
 on.
 
 **This is the platform's own pattern rather than something invented for this CLI**: attach a header
@@ -722,7 +709,7 @@ process outside the browser.
 
 **On the ERP's API keys page** — your profile → API keys, at `{identity-host}/{env}/identity/api-keys`
 for the environment this project points at. Create a key, copy the `tone_live_…` value it shows once,
-and paste it into `.env`.
+and put it in `.env` as `ILLUMIFY_API_KEY=…`.
 
 The page needs a browser session, so this is a human action at a browser and there is no CLI command for
 it. **Name the key after the project** — the list shows names and prefixes, and that is how you find the
@@ -740,31 +727,18 @@ So do not treat this as something that ages out:
 - **revoke it on the same page when you are done** — that is the off switch, and the only one;
 - **one key per project**, never a shared one, so revoking has a known blast radius.
 
-It carries your full claims — your tenant and every security account you can reach. It is the **same
-kind of credential** as the upload key; the only thing separating them is the rule about where each may
-live, which is why the names are kept far apart.
+It carries your full claims — your tenant and every security account you can reach. That is why one
+key is enough for both uploading and previewing, and why it may live in exactly the three places above.
 
-### It is dev-only, and structurally so
+### The dev half is dev-only, and structurally so
 
-The code that attaches it lives inside `illumify dev`, which is **never deployed**, and the value never
-enters JavaScript so no bundler can put it in a built asset. A deployed page carries **no credential at
-all** — its authority is the URL it was served under. You do not have to remember to remove this before
-shipping, because there is no path by which it ships.
+The code that attaches the key lives inside `illumify dev`, which is **never deployed**, and the value
+never enters JavaScript so no bundler can put it in a built asset. A deployed page carries **no
+credential at all** — its authority is the URL it was served under. You do not have to remember to
+remove anything before shipping, because there is no path by which it ships.
 
-**This is a stopgap for the current phase, not a permanent design.** A long-lived key in a project file
-is the weakest part of this arrangement, and it is expected to be replaced. Treat it as something to
-revoke when you are done rather than something to keep.
-
-### If you are an agent working in this project
-
-**Do not read the value of `ILLUMIFY_DEV_API_KEY`, and do not fill it in — unless the owner directly
-tells you to.** That exception is theirs to give and it is real; short of it, ask them to set the key and
-stop. The existing rule about `.env` is that you must not *edit* it. This key adds: do not *read* it
-either, and do not put it in a message, a commit, a log, or a note "just to check it".
-
-A value that reaches a transcript is leaked permanently, and **this key does not expire**, so there is
-no point at which the leak stops mattering. Revocation is the only remedy, and it is the owner's to
-perform.
+**A long-lived key in a project file is the weakest part of this arrangement**, and it is expected to
+be replaced. Treat it as something to revoke when you are done rather than something to keep.
 
 If a call outside the shopper API is refused while you are working, say so and name this key as the
 likely cause. Setting it is the owner's action at their own browser.
