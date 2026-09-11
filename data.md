@@ -124,42 +124,17 @@ Do not branch page-exhaustion off `deliveryMode`. `"complete"` means the whole f
 back in one response and `"windowed"` means a keyset window, but a windowed response can be the last
 one. The signal for "there is more" is a non-`null` `nextCursor`.
 
-### 3. An offer is `site + skuId + batchId? + unitOfMeasureId` + facility and source
+### 3. An offer is facility-neutral merchandise identity
 
-The full identity is `site + skuId + batchId? + unitOfMeasureId + customerFacilityId? + stockCompanyId`
-— the buyer's destination facility and the seller's stock source are part of *which offer this is*, not
-decorations on it. (The platform's channel-neutral price identity stays the first four; the last two
-are the storefront's own.)
+The full identity is `site + skuId + batchId? + unitOfMeasureId + stockCompanyId`. Different UOMs,
+item/batch grains and seller sources are separate offers; the buyer facility is not. One offer has one
+`offerId`, `offerRevision`, price and `availableQuantity` whatever destination later receives it. Offers
+no longer carry `customerFacilityKey`.
 
-**Different UOMs, item/batch grains, destinations and sources are *separate offers*, not variants of
-one price.** A SKU with an each and a case UOM across two batches has more than two offers, and a
-second seller source doubles them again. The numbers on them are unrelated by design: UOM conversions
-affect quantities only, and the server never multiplies or divides a price to manufacture another UOM's
-price. Neither may you.
-
-Each offer also carries three opaque values and a flag:
-
-- **`customerFacilityKey`** — which of the buyer's facilities this offer is priced for. Absent on a
-  public offer. It matches an entry in `getSession().facilityList`.
-- **`stockCompanyKey`** — which seller source will ship it, with `sourceLabel` as its display name.
-- **`isDefault`** — the server's own marker on the offer it considers the plain one for its group.
-  It is **not** the recommendation; `recommendedOfferId` is (fact 5).
-
-**Opaque means opaque.** Do not parse one, do not derive anything from one, do not construct one, and
-do not compare one against a value you built. They are integrity-protected server tokens: their only
-legitimate use is being handed back unchanged — as a query parameter, or inside a cart line.
-
-Three tokens, three different lifecycles, and they are not interchangeable:
-
-- **`offerId`** — the merchandise identity. Opaque, versioned, integrity-protected, site-scoped,
-  stable across shopper contexts and price changes, and carrying no price, customer or segment
-  authority. Never parse one and never compose one. It is the only thing a theme should ever hand back
-  to the server.
-- **`offerRevision`** — context-bound change detection. Moves with price, discount, conversion,
-  availability, expiry and orderability. **Not a quote**, and it holds no price.
-- **`revision`** on the response envelope — the whole read model's dependency state. Neither of the
-  above, and not a price lock. Its one operational meaning is that a cursor issued under one revision
-  is dead under the next.
+`offerId`, `offerRevision` and `stockCompanyKey` are opaque. Never parse or compose them. `offerId` is
+stable commercial identity; `offerRevision` is context-bound change detection; the envelope `revision`
+is the whole read model state used by cursors. A known customer's `customerFacilityKey` comes only from
+`session.facilityList` and goes on each cart line byte-for-byte.
 
 ### 4. Missing money is `null` and never `0`
 
@@ -266,43 +241,18 @@ a page whose only data source is this SDK.**
 
 `illumify dev` sends no CSP, so an external call works in a preview and fails deployed.
 
-### 9. A shopper with more than one facility has no facility, and every price is `null` until you pick one
+### 9. Facilities are per-line destinations over one catalogue
 
-**This is the one on the list that stops the page working rather than making it subtly wrong, and it is
-still silent: no error, no empty response, no field that says "choose a facility".**
+A known customer's `facilityList` contains opaque `{ customerFacilityKey, name }` choices. Read the
+catalogue once without a facility parameter: pricing, availability, offer identity and revisions do not
+vary by destination. Main ignores a stray `customerFacilityKey` query parameter, but do not send one.
+Changing a selector is local UI state and must not restart a pager or refetch detail or filters.
 
-A known customer's facilities arrive on `getSession()` as `facilityList`, each an opaque
-`customerFacilityKey` and a display `name`. What happens next depends only on how many there are:
-
-| `facilityList.length` | What the server does |
-| --- | --- |
-| 0 | Public pricing. Nothing to select. |
-| 1 | Selects it for the shopper. Everything is priced. |
-| **2 or more** | **Selects none.** An arbitrarily chosen facility means arbitrary prices, so it refuses to choose. |
-
-Until the browser passes a validated `customerFacilityKey`, that third row is what a page renders
-against, and this is the exact shape of it:
-
-- `unitPrice`, `effectiveUnitPrice` and `availableQuantity` are `null`
-- `discountPercent` is `0`
-- `available` is `false` and `orderabilityCode` is `"Unavailable"`, on every offer
-- `item.available` is therefore `false` for every item
-- a cart write is refused with `400 FacilitySelectionRequired`
-
-Every one of those is a value the same page would legitimately render for a genuinely unpriced item, so
-the catalogue does not look broken — it looks like a seller with nothing in stock. And **`msrp` is not
-suppressed**, so a page that falls back to it prints a plausible number next to "call for pricing".
-
-**So read `facilityList` before you render anything priced.** More than one entry means a facility
-selector is not a feature to add later; it is the thing that makes the page work. Pass the chosen key on
-every catalog read and every cart call — it changes which pricing context the server resolves, so it
-belongs on the request rather than being applied to the response. You may hold several validated keys at
-once and render them as columns: each column is its own priced read, and each cart line keeps the
-facility its offer was priced under.
-
-**One key per read, and everything downstream is bound to it.** The cursor, the ETag and the response's
-own pricing context all bind to the selected facility, so a pager started under one key cannot be
-continued under another — start a new walk instead.
+Every known-customer cart line must carry one exact session key and no `guestAllocationKey`. Its identity
+is `(offerId, customerFacilityKey)`, so the same offer may be sent to several facilities as separate
+lines. Those quantities share the offer's one `availableQuantity`; exceeding the sum rejects the whole
+replacement with `409 InsufficientInventory`. Key drafts by the compound identity or one destination
+will silently overwrite another.
 
 ## Product media exists, and it arrives as a complete URL
 
@@ -375,7 +325,7 @@ is already on `config`.) These five are the reason to call:
 | `pricingContext` | `"Public"` or `"Customer"` — the field to reason about prices with |
 | `currencyCode` | ISO 4217 for every money value in the catalogue |
 | `accessPolicy` | `customerLinkEnabled`, `signInEnabled`, `signInRequiresInvite` |
-| `facilityList` | The buyer's eligible facilities, each `{ customerFacilityKey, name }`. **Read its length before rendering a price** — see fact 9. Empty for a public shopper |
+| `facilityList` | Known-customer cart destinations, each `{ customerFacilityKey, name }`; empty for a public shopper. See fact 9 |
 | `stateList` | The US states a **guest** may name a destination in, each `{ id, name, shortName }`, ordered by name. Submit the chosen `id` as `guestFacilityList[n].stateId`. **Empty for a signed-in or customer-link shopper** — they cannot submit a guest destination — so read its length before rendering the field. `illumify skills get app` has the whole rule |
 
 **`session.themeKey` is `null` under `illumify dev --fixtures`** — nothing has been uploaded, and a
@@ -409,15 +359,15 @@ reference, and `src/storefront.d.ts` in your project has every field.
 What this package is for is getting the values those calls need **right**, and three of the facts above
 are the ones a cart depends on:
 
-- A cart line is `{ offerId, quantity, observedOfferRevision }` — plus `guestAllocationKey` on an
-  anonymous line, which is your own destination label. **A client-composed SKU, batch, UOM, conversion
+- A cart line is `{ offerId, quantity, observedOfferRevision }` plus exactly one destination: an opaque
+  session `customerFacilityKey` for a known customer, or your `guestAllocationKey` for an anonymous line. **A client-composed SKU, batch, UOM, conversion
   or price is never trusted**, so there is nothing to be gained by sending one. Hold the `offerId` and
   the `offerRevision` from the read the shopper actually saw (facts 3 and 5).
 - A stale `observedOfferRevision` is refused with **`409 PricingChanged`**, nothing is mutated, and the
   refreshed cart arrives on the error. That is the same shape of instruction as `409
   CatalogRevisionChanged` (fact 2), and a theme that treats either as an error is broken in the same
   way: show the new number, do not retry the refused body.
-- A shopper with more than one facility can add nothing at all until your page picks one (fact 9).
+- All destinations of one offer share stock, and line identity includes the destination key (fact 9).
 
 Invites and buyer enrolment remain outside this phase.
 
@@ -453,19 +403,17 @@ buyer in order to make your own preview work.
 sandbox: what you read is that environment's real catalogue. Pointed at a shared environment, that is
 somebody's live data.
 
-**`illumify dev --fixtures` is the other mode**, and it answers these four reads inside the CLI process:
-no link to a storefront site, no credential, and no request leaving the machine. Reach for it to build
+**`illumify dev --fixtures` is the other mode**, and it answers the catalogue plus an in-memory cart and
+checkout inside the CLI process: no link, credential, or request leaving the machine. Reach for it to build
 against shapes a live catalogue will not hand you on demand — `--fixtures empty` for the empty state,
 `--fixtures restart` for the `409` walk restart in fact 2, **`--fixtures facilities` for fact 9**, and
 `--shopper-context identified` for customer pricing (which really changes the numbers there, unlike
 against a real environment).
 
-**`--fixtures facilities` is the one to run before you design a catalogue page.** It serves a known
-customer with three eligible facilities and none chosen, which is the state fact 9 describes: every
-price `null`, every item unavailable, `pricingContext: "Customer"` all the same, and `msrp` still
-standing. Send `?customerFacilityKey=` one of the keys `getSession().facilityList` gives you and the same
-catalogue prices — differently per facility, because each prices from its own segment. It is the only way
-to see that branch before a real multi-facility customer does.
+**`--fixtures facilities` serves a known customer with three destinations over one fully priced
+catalogue.** Offers contain no facility key. Use the same offer in two cart lines with different session
+keys to exercise compound identity and shared stock. The fixture cart and checkout run in memory;
+`pricing-change`, `low-stock`, `facility-removed` and `pending-checkout` expose recovery paths.
 
 One thing to know while writing code against it: `session.themeKey` is `null`, and the type says
 otherwise. `illumify skills get deploy` has the scenarios and the rest of the divergences.
@@ -479,8 +427,8 @@ shape is synchronised against the backend's generated contracts and checked in b
 every behavioural claim is read from the server's source. None of it is *measured*.
 
 The cart and the checkout are one degree less proven still. Their contract is read from the server's own
-source — routes, request and response shapes, error codes, the facility suppression in fact 9 — and the
-backend's own focused tests are green, but the cart slice's end-to-end cases were **stopped before
+source — routes, request and response shapes, error codes, per-line destinations and shared stock — and
+the backend's own focused tests are green, but the cart slice's end-to-end cases were **stopped before
 revalidation** rather than passed. So build against the shapes with confidence and treat the first live
 run as the first live run.
 
