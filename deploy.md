@@ -196,7 +196,8 @@ either `--slug` or `--fixtures`, below.
 
 ```bash
 illumify dev --fixtures                 # the `catalog` scenario
-illumify dev --fixtures empty           # or: windowed, restart
+illumify dev --fixtures empty           # also: windowed, restart, facilities
+illumify dev --fixtures pricing-change  # also: low-stock, facility-removed, pending-checkout
 illumify dev --fixtures --shopper-context identified
 ```
 
@@ -218,31 +219,21 @@ carries several offers across UOMs and batch grains, and the recommended offer i
 | `empty` | `items: []`, every facet empty — the case a grid built against three tidy products gets wrong first |
 | `windowed` | 5,200 SKUs, so delivery is `windowed` and `nextCursor` has to be walked |
 | `restart` | `windowed`, and the revision moves once: one `409 CatalogRevisionChanged` on page two, then the walk completes |
-| **`facilities`** | A known customer with **three eligible facilities**, so the server chooses none and the whole catalogue arrives unpriced until you send a `customerFacilityKey` |
+| **`facilities`** | A known customer with three per-line destinations over one fully priced catalogue |
+| `pricing-change` | Offer revisions move after the first successful cart write |
+| `low-stock` | Shared stock is deliberately small across destinations |
+| `facility-removed` | One current facility disappears after a cart write |
+| `pending-checkout` | Checkout returns `503` with committed orders and `finalizationStatus: "Pending"` once |
 
 `restart` is worth knowing about: it is the only way to exercise the 409 path before a live shopper
 does. `illumify skills get data` explains what that path has to do.
 
-**`facilities` is the one that decides what you build rather than how you cope.** Every other scenario
-shows you data your page has to survive; this one shows you a page that cannot work. A shopper with more
-than one eligible facility gets `unitPrice: null`, `effectiveUnitPrice: null` and `available: false` on
-every offer, `available: false` on every item, and `pricingContext: "Customer"` reported all the same —
-a complete catalogue that looks like a seller with nothing in stock, with no error anywhere. `msrp` is
-*not* suppressed, so a page with an `?? msrp` fallback prints a plausible number beside an offer it
-cannot buy.
-
-```bash
-illumify dev --fixtures facilities
-# then: GET {apiBaseUrl}/session            -> facilityList has three entries
-#       GET {apiBaseUrl}/items              -> 200, and not one price
-#       GET {apiBaseUrl}/items?customerFacilityKey=<one of them>   -> priced
-```
-
-Each facility prices from its own segment, so the three keys really do give three different numbers —
-which is what makes a column layout worth testing here. The keys are **opaque**: pass one back exactly
-as `session` gave it, and an unknown or hand-made one is a bare `404`, as in production. It overrides
-`--shopper-context`, because an anonymous shopper has no facilities at all and "anonymous with three
-facilities" is not a state the server can produce. `illumify skills get data` has the rule.
+**`facilities` is the per-line destination scenario.** The session has three keys and `/items` is
+fully priced with no `customerFacilityKey` on any offer. Read the catalogue once. Put an exact session
+key on each known-customer cart line; `(offerId, customerFacilityKey)` is line identity, and all lines
+for one offer share stock. Unknown catalogue query parameters are ignored, including the retired
+facility parameter. The scenario overrides `--shopper-context` because an anonymous shopper has no
+customer facilities.
 
 Two things behave differently here than they do against a real environment, and both are in the banner:
 
@@ -251,15 +242,10 @@ Two things behave differently here than they do against a real environment, and 
   environment the same flag only changes the label the page is told.
 - **A call to any Illumify operation that is not the shopper API answers `501`** rather than reaching a
   backend. Nothing is proxied, so there is nothing to reach.
-- **The cart and checkout routes answer `501` with a body saying they are not emulated**, and the status
-  is chosen rather than inherited: a bare `404` is what the catalogue sends for everything that fails,
-  so it would read as "this platform has no cart". These three routes are real in production. They are
-  not emulated because their request and response shapes are not generated contracts the CLI can check
-  itself against the way it checks the catalogue's, and because a fixture cart answering `200` would be
-  the only place a storefront write succeeds without the `Origin` check production applies first — which
-  would teach you that a write path works when the first thing production does is refuse it.
-  Cart code still *runs* here: the four methods are on the runtime. Exercise the far end on the hosted
-  preview an upload gives you.
+- **Cart and checkout are in-memory emulations.** They enforce the adapter header and same-origin guard,
+  then exercise versions, compound destinations, shared stock, repricing, prepare, checkout,
+  idempotency and pending finalization. They do not prove persistence, ERP Sales Order transactions,
+  workflow activation or exact Live Pricing arithmetic; the banner names that boundary.
 
 **Fixtures live in the CLI binary, not in your project.** There is no fixture file for a build to pick
 up, so none can reach an uploaded theme.
@@ -282,7 +268,7 @@ An **exact** preview of the other authorities is what `illumify upload`'s hosted
 | A strict CSP on every document | **No CSP header at all.** A third-party fetch or a CDN script works here and fails deployed |
 | `accessMode` varies by how the shopper arrived | Always `"Anonymous"` |
 | The server resolves the shopper | `--shopper-context identified` changes **only the label the page is told.** The upstream calls still go to the anonymous lane with no credential, so the server resolves `Anonymous` for them. Use it to check that your identified rendering exists, not to test pricing |
-| `getCart`, `replaceCart`, `prepareCheckout` and `checkout` reach the cart | **The methods are there and the writes do not land.** They are on the runtime — dev injects the server's own bootstrap, `version: 2` and all — so your cart code runs and your types are right. What differs is the far end: **under `--fixtures` the three cart routes are `404`** (the fixture server answers `session`, `items`, `items/{skuId}` and `filters`, and nothing else), and against a real environment the write is refused, because the platform compares the browser's `Origin` against the storefront's own and the browser's origin here is `localhost`. Build the cart in dev, exercise it on the hosted preview an upload gives you |
+| Cart and checkout persist and create ERP orders | **In-memory under `--fixtures`.** The browser contract and recovery states are emulated with the real write guard; persistence, exact Live Pricing, transactions and workflows require a hosted preview |
 
 Read every one of these defensively and your page behaves correctly in both places. That last row is
 the safe direction and worth reading as one: a dev preview **cannot** write into a real shopper's cart

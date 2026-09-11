@@ -199,10 +199,10 @@ window.IllumifyStorefront = {
   routeUrl,            // (route: string) => URL  — the same URL, without going there
   login,               // (() => void) | null
   logout,              // (() => void | Promise<void>) | null
-  getCart,             // (options?) => Promise<Cart>            — ABSENT under Preview
-  replaceCart,         // (body, options?) => Promise<Cart>      — ABSENT under Preview
-  prepareCheckout,     // (body, options?) => Promise<Prepared>  — ABSENT under Preview
-  checkout,            // (body, options?) => Promise<Result>    — ABSENT under Preview
+  getCart,             // () => Promise<Cart>             — ABSENT under Preview
+  replaceCart,         // (body) => Promise<Cart>          — ABSENT under Preview
+  prepareCheckout,     // (body) => Promise<Prepared>      — ABSENT under Preview
+  checkout,            // (body) => Promise<Result>        — ABSENT under Preview
 };
 ```
 
@@ -458,8 +458,8 @@ you want to exist.
 - **`cartVersion` guards the write.** It is an opaque rowversion, `null` on the first `PUT`, and a
   mismatch is `409 CartVersionConflict` — with the current cart attached, so the repair is to re-apply
   the shopper's intent to *that* and write again, never to retry the same body.
-- **A line is `{ offerId, quantity, observedOfferRevision }`**, plus `guestAllocationKey` on an
-  anonymous line. That is all a theme may send. No SKU, no batch, no UOM, no conversion, no money —
+- **A line is `{ offerId, quantity, observedOfferRevision }`**, plus `customerFacilityKey` on a
+  known-customer line or `guestAllocationKey` on an anonymous line. That is all a theme may send. No SKU, no batch, no UOM, no conversion, no money —
   the server re-derives every one of them from `offerId` and re-prices at cart time, again at prepare,
   and a third time inside the checkout transaction. A price your page sends is not rejected; it is not
   read.
@@ -512,8 +512,9 @@ checked-out cart is `409 CartCheckedOut`, so a shopper who wants to buy again st
 
 - **A known customer** — arriving by customer link or signed-in account — sees their negotiated
   pricing and can send **one order to several of their own facilities**. Each cart line carries the
-  facility its offer was priced under, so a multi-facility cart is one cart with differently allocated
-  lines, not several carts. Their lines must **not** carry a `guestAllocationKey`.
+  destination chosen for that line, so a multi-facility cart is one cart with differently allocated
+  lines, not several carts. `(offerId, customerFacilityKey)` is line identity; their lines must **not**
+  carry a `guestAllocationKey`. All destinations of one offer share its stock.
 - **A guest** — a licensed business nobody has set up yet — enters their contact details, licence
   number and address at checkout, and **the customer record is created on the spot**. Guests are
   always priced at public list pricing, even when their licence turns out to match an existing
@@ -576,21 +577,17 @@ against the SDK's `CatalogSession`. Read it through a narrowed local type until 
 rather than widening it with a cast you will forget to remove. `illumify dev --fixtures` serves the
 list now, on the anonymous branch only.
 
-### A shopper with more than one facility has no facility until your page picks one
+### Facilities are chosen per cart line, never on the catalogue
 
-**A theme with no facility selector shows a multi-facility shopper a catalogue with no prices and no
-way to add anything, and nothing on the page says why.**
+Read one catalogue with no facility parameter. Prices, revisions, availability and `offerId` are the
+same for every facility a known customer owns, and offers carry no `customerFacilityKey`. Changing a
+selector is local UI state; do not refetch items, detail or filters.
 
-One eligible facility is selected for the shopper. **Two or more and the server selects none** — an
-arbitrarily chosen facility would mean arbitrary prices. Until the browser supplies a validated
-`customerFacilityKey`, every offer's money and availability come back suppressed and every cart write
-is refused with `400 FacilitySelectionRequired`. `illumify skills get data` has the exact fields and
-the reason they are indistinguishable from an empty catalogue.
-
-So: read `getSession().facilityList` before you draw anything priced. More than one entry means a
-selector is not a feature you might add later — it is the thing that makes the page work. You may hold
-several validated keys at once and render them as columns; each column is its own priced read, and
-each cart line keeps the facility its offer was priced under.
+Every known-customer selection carries one exact opaque key from `getSession().facilityList`. The line
+identity is `(offerId, customerFacilityKey)`, so one offer can appear once per destination. Key local
+drafts by that pair, send the complete set on every replacement, and sum all those lines against the
+offer's one shared `availableQuantity`. An absent key is `FacilitySelectionRequired`; a key no longer in
+the session is `InvalidCustomerFacility`.
 
 ## The Content Security Policy, measured
 
@@ -728,11 +725,12 @@ guessing the heavy one is the expensive mistake.
   storefront rather than by the route you skipped; hard-coding it pins your theme to an unversioned
   internal value. Use `replaceCart`, `prepareCheckout` and `checkout`.
 - **Do not send money, a SKU, a batch, a UOM or a conversion to the cart.** A line is `offerId`,
-  `quantity` and the `offerRevision` you displayed. Everything else is re-derived and re-priced.
+  its destination key, `quantity` and the `offerRevision` you displayed. Everything else is re-derived
+  and re-priced.
 - **Do not treat `409 PricingChanged` or `409 CartVersionConflict` as errors.** Both carry the current
   cart and both are instructions. Do not retry either with the body that was refused.
-- **Do not draw a priced page for a multi-facility shopper without a facility selector.** They get no
-  prices and no Add, with nothing saying why.
+- **Do not refetch the catalogue when a facility changes.** Facilities are per-line destinations over
+  one catalogue, not pricing selectors.
 - **Do not read `orderList[0]` as "the order".** One checkout produces one order per (source,
   destination) group.
 - **Do not re-place an order after a `503`.** If the error's `response` carries `orderList`, the orders
