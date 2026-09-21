@@ -154,6 +154,34 @@ declaration is the path — but every runtime helper takes one: `routeUrl("/prod
 `href` with the query on it. Nothing throws and nothing strips it. Read `location.search` on the way
 in, exactly as you would anywhere else.
 
+## PDF catalogue export: `/print` is the capability
+
+A theme becomes PDF-exportable by declaring an ordinary page at `/print`. It is deliberately not a
+reserved route. The ERP requests that exact route in a hidden same-origin frame; a 404 means the theme
+is simply not exportable. Author this page for paper rather than bending the shopper catalogue toward
+print: no filters, cart controls, Load more button, scroll reveal, or horizontally scrolling price
+table.
+
+During export, `IllumifyStorefront.config.exportMode` is `"catalog"` (`null` on ordinary visits).
+The page owns these DOM marks:
+
+- Stamp `data-illumify-export-state="loading"` on `document.documentElement` before loading, then
+  change it to `"complete"` or `"error"`.
+- Stamp `data-illumify-export-items` with the decimal number of products rendered. If the catalogue is
+  incomplete, also stamp `data-illumify-export-truncated="1"`.
+- Put `data-illumify-catalog-item` on every product entry's root. Sheet breaks snap upward to those
+  bottom edges; without them the exporter must guess and may cut an entry in half.
+- Put `data-illumify-no-export` on anything the exporter must omit.
+
+Walk the entire catalogue with `createItemPager`; do not own cursors or hand-page `getItems`. The
+capture never scrolls, so all printable content must already be visible when state becomes
+`"complete"`. For layout reference at 96 dpi, A4 portrait is 794×1123 CSS px and Letter portrait is
+816×1056; landscape swaps each pair.
+
+Develop it with `illumify dev --fixtures --export-mode catalog`. The injected runtime then matches the
+ERP's `exportMode`, and the development-only ruler shows the configured paper boundaries; use
+`--sheet a4|letter` and `--orientation portrait|landscape`.
+
 ### Eight reserved first segments
 
 `api` · `_auth` · `c` · `_account` · `preview` · `admin` · `internal` · `management`
@@ -194,6 +222,7 @@ window.IllumifyStorefront = {
     assetBaseUrl,      // absolute — this theme's own files. NOT product media
     shopperContext,    // "Anonymous" | "Identified" — NOT a pricing signal
     themeKey,          // absent under `illumify dev`
+    exportMode,        // "catalog" during PDF export, otherwise null
   },
   navigate,            // (route: string) => void — a full document load
   routeUrl,            // (route: string) => URL  — the same URL, without going there
