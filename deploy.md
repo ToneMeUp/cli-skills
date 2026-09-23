@@ -133,6 +133,10 @@ that does not exist. Two consequences:
   rather than a configuration, and it used to be writable. An old `ILLUMIFY_BACKEND_SHAPE` line that
   disagrees with `ILLUMIFY_ENV` is refused rather than obeyed; one that agrees is ignored. Do not
   reconstruct the shape by editing `.env`.
+- **Only the commands that address a host read it.** `illumify dev`, `link`, `upload`, `handoff` and
+  `themes` need it and refuse before doing anything else without it. `illumify build` and `illumify
+  screenshot` take no `--env` and do not read `ILLUMIFY_ENV` — and the bundler they run is not handed
+  it either, so `build:app` cannot branch on the environment. A project with no `.env` at all builds.
 
 `ILLUMIFY_API_HOST` appears **only** when the project was scaffolded with `--api-host`, and it is an
 override of the host the environment implies, not a required setting. If your `.env` has no such line,
@@ -360,9 +364,12 @@ The corollary is unchanged: the manifest is part of the identity. Editing `illum
 bumping `authorVersion` (which defaults to `package.json`'s `version`), produces **different content**
 from the same files, so it is a new revision even when every page byte is identical.
 
-**A build is no longer bound to one environment.** A base-relative theme carries no environment, so the
-same archive uploads anywhere. `--env` only decides which host the report and the hand-off text
-address.
+**A build has no environment.** A base-relative theme carries none, so the same archive uploads
+anywhere and the key is the same on every machine. `illumify build` takes no `--env`, reads no
+`ILLUMIFY_ENV`, and runs `build:app` with that variable **removed** from its environment — deliberately,
+so a build cannot branch on it: one that did would produce a different archive per environment while
+the report went on calling it environment-independent. The report says so every time:
+`The archive names no environment: the same file uploads to any of them.`
 
 ### The manifest is inside the archive, and the archive is the whole upload
 
@@ -535,6 +542,10 @@ This CLI still cannot publish, roll back, or move an assignment or its pin. All 
 illumify handoff --out theme-bundle.zip
 ```
 
+Also: `--env` — this command's own, not `build`'s. The archive carries no environment, but the README
+inside the bundle names the host to POST to, and that is one environment's. It defaults to
+`ILLUMIFY_ENV` and is refused, before the build runs, when neither is set.
+
 Builds, then writes **one file** somebody else can upload without this CLI:
 `.illumify/<project>-<version>-handoff.zip`, holding the archive and a `README.md` written for whoever
 receives it. The manifest is inside the archive, so there is nothing else to carry.
@@ -671,8 +682,8 @@ a message, a commit, a log, or a note. A value that reaches a transcript is leak
 **this key does not expire**, so there is no point at which the leak stops mattering. Revocation is the
 only remedy, and it is the owner's to perform.
 
-Everything that talks to nothing works without it: `illumify build`, `illumify handoff` and
-`illumify dev --fixtures` need no credential at all.
+Everything that talks to nothing works without it: `illumify build`, `illumify screenshot`,
+`illumify handoff` and `illumify dev --fixtures` need no credential at all.
 
 ## What `illumify dev` does with the same key
 
