@@ -313,20 +313,39 @@ everything else is identical, so a detail view does not need the list response. 
 non-positive `skuId` throws a `RangeError` locally rather than reaching the server as a 404 that would
 read as "no such product".
 
-## `getSession()` — call it for the five things the global does not carry
+## `getSession()` — call it for the six things the global does not carry
 
 `shopperContext` and `themeKey` are already on `window.IllumifyStorefront.config`, so a page that reads
 only those does not need this call. (`slug` is **not** on the injected config — nothing there names the
 site. It arrives here, and it is a label rather than something to build a URL from: every URL you need
-is already on `config`.) These five are the reason to call:
+is already on `config`.) These six are the reason to call:
 
 | | |
 | --- | --- |
 | `pricingContext` | `"Public"` or `"Customer"` — the field to reason about prices with |
 | `currencyCode` | ISO 4217 for every money value in the catalogue |
 | `accessPolicy` | `customerLinkEnabled`, `signInEnabled`, `signInRequiresInvite` |
-| `facilityList` | Known-customer cart destinations, each `{ customerFacilityKey, name }`; empty for a public shopper. See fact 9 |
+| `facilityList` | Known-customer cart destinations, each `{ customerFacilityKey, name, salesRep }`; empty for a public shopper. See fact 9 |
 | `stateList` | The US states a **guest** may name a destination in, each `{ id, name, shortName }`, ordered by name. Submit the chosen `id` as `guestFacilityList[n].stateId`. **Empty for a signed-in or customer-link shopper** — they cannot submit a guest destination — so read its length before rendering the field. `illumify skills get app` has the whole rule |
+| `salesRep` | The rep on the seller's customer record the shopper matched: `{ name, email, phone }` with `email` and `phone` each nullable and no ids, or `null`. Below |
+
+### The sales rep
+
+`session.salesRep` is the rep of the customer the shopper matched, and each `facilityList` entry carries
+its own `salesRep`: the facility's own rep when one is assigned, otherwise the customer's. The server
+resolves that rule; never repeat it. Use the selected facility's `salesRep`, else the session's.
+
+**Read it as `session.salesRep ?? null`.** An environment older than the change omits the key, and
+`null` means show nothing, never an empty block. It is `null` for an anonymous shopper, a shopper who
+matched no customer, and a rep that is missing, deleted, nameless or from another company tree. A
+facility whose own rep is unusable is `null` and does **not** fall back to the customer's. There is no
+seller fallback.
+
+Its use is an "Ask my rep" link on an offer with `orderabilityCode: "MissingPrice"`: `mailto:` when there
+is an `email`, with the item name and SKU in an `encodeURIComponent`-encoded subject, `tel:` when there
+is only a `phone`. It is display data, and nothing about pricing or availability may branch on it.
+`illumify dev --fixtures facilities` gives three destinations with an own rep, a fallback rep and a
+phone-only rep; an anonymous fixture session has `salesRep: null`.
 
 **`session.themeKey` is `null` under `illumify dev --fixtures`** — nothing has been uploaded, and a
 made-up 64-hex value would name nothing while reading as an answer. The type says `string`, so a page
