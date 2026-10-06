@@ -162,6 +162,8 @@ if (price.kind === "unpriced") {
 `msrp` and `availableQuantity` are `null` when absent on the same terms. `availableQuantity` is
 advisory in that offer's own UOM and is **not reserved** — it can be gone by the time an order is
 placed.
+`availableQuantity: null` means unknown, never "no limit". `overOrderAllowed: true` means orders above stock are
+allowed: do not cap at `availableQuantity`, keep showing it. Older servers omit the flag; treat it as `false`.
 
 ### 5. The recommended offer comes from `recommendedOfferId` — never from the lowest price
 
