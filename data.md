@@ -330,7 +330,7 @@ is already on `config`.) These six are the reason to call:
 | `facilityList` | Known-customer cart destinations, each `{ customerFacilityKey, name, salesRep }`; empty for a public shopper. See fact 9 |
 | `stateList` | The US states a **guest** may name a destination in, each `{ id, name, shortName }`, ordered by name. Submit the chosen `id` as `guestFacilityList[n].stateId`. **Empty for a signed-in or customer-link shopper** — they cannot submit a guest destination — so read its length before rendering the field. `illumify skills get app` has the whole rule |
 | `salesRep` | The rep on the seller's customer record the shopper matched: `{ name, email, phone }` with `email` and `phone` each nullable and no ids, or `null`. Below |
-| `salesRepOptionList` | On a public site, the reps an anonymous shopper may pick, each `{ key, name }`; otherwise `[]`. Below |
+| `salesRepOptionList` | On a public site whose company turned the pick on, the reps an anonymous shopper may pick, each `{ key, name }`; otherwise `[]`. Below |
 
 ### The sales rep
 
@@ -352,8 +352,10 @@ phone-only rep; an anonymous fixture session has `salesRep: null`.
 
 ### The sales rep pick
 
-On a public site `session.salesRepOptionList` is `{ key, name }[]`, at most 200, ordered by name; every
-other site gets `[]`. **Read it as `session.salesRepOptionList ?? []`**, because an older environment
+On a public site `session.salesRepOptionList` is `{ key, name }[]`, at most 200, ordered by name, but only
+when the company turned on Company Settings > Sales > "Let Storefront Buyers Pick a Sales Rep" (off
+by default). Every other site, and a company with the setting off, gets `[]`; a `salesRepKey` sent then
+is ignored and the order is still created. **Read it as `session.salesRepOptionList ?? []`**, because an older environment
 omits the key. Show a "Sales rep (optional)" select only when the list is not empty **and**
 `session.salesRep` is `null`, with "No preference" as the default.
 
