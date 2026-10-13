@@ -526,6 +526,15 @@ the whole transaction rolls back.
 checkout the shopper started**, not per network request: the same key with the same body returns the
 same orders, and a fresh key on a retry places a second order.
 
+**`checkout` also takes an optional `note`** (at most 1000 characters after trim) that goes on every
+order of the checkout, and `salesRepKey` from the session's `salesRepOptionList` (`illumify skills get
+data`). The server does not store the note on the cart, so keep it in the browser — `sessionStorage`
+under one key per site slug — until checkout, send it trimmed, omit it when empty, and clear it after a
+placed order, including a `503` that carries `orderList`. Over 1000 is `400 NoteTooLong` with no order:
+keep the text and ask for a shorter one. Build the body once per attempt: the same `idempotencyKey` with
+a changed `note` or `salesRepKey` is `409 IdempotencyConflict`, so an edit after a refusal is a new
+attempt with a new key.
+
 **A `503` can mean the orders were placed.** When the orders commit but the post-commit approval
 workflow does not activate, the response is `503` with `finalizationStatus: "Pending"` — and because
 the status is not 2xx, the call *rejects*. The orders are real. Catch it, look for `orderList` on the
