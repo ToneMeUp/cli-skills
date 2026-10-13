@@ -330,6 +330,7 @@ is already on `config`.) These six are the reason to call:
 | `facilityList` | Known-customer cart destinations, each `{ customerFacilityKey, name, salesRep }`; empty for a public shopper. See fact 9 |
 | `stateList` | The US states a **guest** may name a destination in, each `{ id, name, shortName }`, ordered by name. Submit the chosen `id` as `guestFacilityList[n].stateId`. **Empty for a signed-in or customer-link shopper** — they cannot submit a guest destination — so read its length before rendering the field. `illumify skills get app` has the whole rule |
 | `salesRep` | The rep on the seller's customer record the shopper matched: `{ name, email, phone }` with `email` and `phone` each nullable and no ids, or `null`. Below |
+| `salesRepOptionList` | On a public site, the reps an anonymous shopper may pick, each `{ key, name }`; otherwise `[]`. Below |
 
 ### The sales rep
 
@@ -348,6 +349,18 @@ is an `email`, with the item name and SKU in an `encodeURIComponent`-encoded sub
 is only a `phone`. It is display data, and nothing about pricing or availability may branch on it.
 `illumify dev --fixtures facilities` gives three destinations with an own rep, a fallback rep and a
 phone-only rep; an anonymous fixture session has `salesRep: null`.
+
+### The sales rep pick
+
+On a public site `session.salesRepOptionList` is `{ key, name }[]`, at most 200, ordered by name; every
+other site gets `[]`. **Read it as `session.salesRepOptionList ?? []`**, because an older environment
+omits the key. Show a "Sales rep (optional)" select only when the list is not empty **and**
+`session.salesRep` is `null`, with "No preference" as the default.
+
+Send the chosen `key` on `checkout` as `salesRepKey`, never the `name`; the key is opaque, so do not
+parse it, and omit the field when nothing is picked. An assigned rep wins over the pick, and a bad, stale
+or foreign key never fails the order — the order just has no picked rep. There is no contact detail in
+the list; "Ask my rep" still reads `session.salesRep`.
 
 **`session.themeKey` is `null` under `illumify dev --fixtures`** — nothing has been uploaded, and a
 made-up 64-hex value would name nothing while reading as an answer. The type says `string`, so a page
