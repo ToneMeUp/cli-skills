@@ -7,6 +7,20 @@ and it is now a slightly misleading name: **there is no `illumify deploy`.** `up
 the replacement moves no assignment. If you came here looking for a deploy command, the rest of this
 section is the answer — including the part where an upload can nevertheless go live.
 
+## Upload only when you are told to
+
+**An agent runs `illumify upload` only when the owner explicitly asks it to upload.** Everything else
+ends at a build:
+
+- **Not asked to upload — including asked *how* to upload:** run `npm run build`, then tell the owner to
+  select `.illumify/theme.zip` in Storefront's **Upload design** dialog in Illumify. That is the normal
+  way a theme reaches Illumify, and it needs no link and no API key.
+- **Asked to upload:** run `npm run upload`. It needs a **linked storefront site** (`illumify link
+  --profit-center <id>`) and **the API key** in the environment or the project's `.env`. If either is
+  missing, say exactly which: ask the owner for the profit centre id, and ask them to set the key
+  themselves — never read, print, copy or write it, or request it in chat. Then report what the upload
+  printed, because it says whether a live site changed (below).
+
 ## The shape of the thing
 
 Three entities, and only the middle one is yours:
@@ -441,6 +455,8 @@ to add one or pass `--author-version`, rather than having something like `0.0.0`
 every customer ever ships.
 
 ## `illumify upload`
+
+Only on the owner's explicit request — see [Upload only when you are told to](#upload-only-when-you-are-told-to).
 
 ```bash
 npm run upload -- --display-name "Multi-Facility Checkout"  # first upload, or choose another theme
