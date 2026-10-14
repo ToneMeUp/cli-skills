@@ -673,8 +673,9 @@ precisely the habit this section exists to prevent.
 
 ### If you are an agent working in this project
 
-**Uploading is the agent's job when the user requests it.** Run the project's upload command; do not
-hand the upload back to the user. The CLI uses `ILLUMIFY_API_KEY`, without a login or saved session and
+**Uploading is the agent's job when the user explicitly requests it — and only then.** Run the
+project's upload command; do not hand a requested upload back to the user. Unrequested, build and point
+them at `.illumify/theme.zip` instead ([Upload only when you are told to](#upload-only-when-you-are-told-to)). The CLI uses `ILLUMIFY_API_KEY`, without a login or saved session and
 without you inspecting or copying the key's value. Do not require a separate authentication setup
 before running the command. If the key is missing or rejected, report that error. Uploading moves no
 assignment, but can update a live site with an unpinned assignment; report the command's actual liveness
