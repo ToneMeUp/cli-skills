@@ -7,6 +7,20 @@ and it is now a slightly misleading name: **there is no `illumify deploy`.** `up
 the replacement moves no assignment. If you came here looking for a deploy command, the rest of this
 section is the answer — including the part where an upload can nevertheless go live.
 
+## Upload only when you are told to
+
+**An agent runs `illumify upload` only when the owner explicitly asks it to upload.** Everything else
+ends at a build:
+
+- **Not asked to upload — including asked *how* to upload:** run `npm run build`, then tell the owner to
+  select `.illumify/theme.zip` in Storefront's **Upload design** dialog in Illumify. That is the normal
+  way a theme reaches Illumify, and it needs no link and no API key.
+- **Asked to upload:** run `npm run upload`. It needs a **linked storefront site** (`illumify link
+  --profit-center <id>`) and **the API key** in the environment or the project's `.env`. If either is
+  missing, say exactly which: ask the owner for the profit centre id, and ask them to set the key
+  themselves — never read, print, copy or write it, or request it in chat. Then report what the upload
+  printed, because it says whether a live site changed (below).
+
 ## The shape of the thing
 
 Three entities, and only the middle one is yours:
@@ -442,6 +456,8 @@ every customer ever ships.
 
 ## `illumify upload`
 
+Only on the owner's explicit request — see [Upload only when you are told to](#upload-only-when-you-are-told-to).
+
 ```bash
 npm run upload -- --display-name "Multi-Facility Checkout"  # first upload, or choose another theme
 npm run upload                                                # reuse the remembered name
@@ -657,8 +673,9 @@ precisely the habit this section exists to prevent.
 
 ### If you are an agent working in this project
 
-**Uploading is the agent's job when the user requests it.** Run the project's upload command; do not
-hand the upload back to the user. The CLI uses `ILLUMIFY_API_KEY`, without a login or saved session and
+**Uploading is the agent's job when the user explicitly requests it — and only then.** Run the
+project's upload command; do not hand a requested upload back to the user. Unrequested, build and point
+them at `.illumify/theme.zip` instead ([Upload only when you are told to](#upload-only-when-you-are-told-to)). The CLI uses `ILLUMIFY_API_KEY`, without a login or saved session and
 without you inspecting or copying the key's value. Do not require a separate authentication setup
 before running the command. If the key is missing or rejected, report that error. Uploading moves no
 assignment, but can update a live site with an unpinned assignment; report the command's actual liveness
