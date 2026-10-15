@@ -462,7 +462,7 @@ unit.
 | `400 InvalidQuantity` | A quantity other than `1` on a package line | A theme bug: always send `1` |
 | `400 DuplicateOffer` | The same package on two lines | A theme bug |
 | `409 PricingChanged` | The price or size moved since the list | As for any offer: show the new number and let the buyer decide |
-| `409 OfferUnavailable` | The package was sold, reserved or put on hold, or is now larger than the free stock | Tell the buyer, drop the line, offer to reload the package list. `GET /cart` keeps such a line with `isOrderable: false` and `lineErrorCode: "OfferUnavailable"` |
+| `409 OfferUnavailable` | The package was sold, reserved or put on hold, or is now larger than the free stock | Tell the buyer, drop the line, offer to reload the package list. `GET /cart` keeps such a line with `isOrderable: false` and `lineErrorCode: "OfferUnavailable"`, and with `packageLabel`, `packageQuantity` and `packageUom` all `null` — the backend does not repopulate them, so those fields cannot identify a vanished package line; render it like any unavailable line |
 | `409 InsufficientInventory` | The package and the other lines of its batch exceed the batch's stock | As for any offer |
 
 **The cart does not hold a package.** Two buyers can have the same package in their carts; the first
@@ -536,7 +536,7 @@ somebody's live data.
 checkout inside the CLI process: no link, credential, or request leaving the machine. Reach for it to build
 against shapes a live catalogue will not hand you on demand — `--fixtures empty` for the empty state,
 `--fixtures restart` for the `409` walk restart in fact 2, **`--fixtures facilities` for fact 9**,
-`--fixtures packages` for the package list and its cart answers (Packages, below), and
+`--fixtures packages` for the package list and its cart answers (Packages, above), and
 `--shopper-context identified` for customer pricing (which really changes the numbers there, unlike
 against a real environment).
 

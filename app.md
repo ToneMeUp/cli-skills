@@ -655,11 +655,13 @@ screens fit it. It is advice, and the layout is yours.
 - **`items: []` means hide the section**, and the buyer buys from the batch as they do today. Do not
   show "no packages".
 - **The cart line** is `packageLabel` as its name and "1 package · 2,000.5 g" from `packageQuantity` and
-  `packageUom`, with no stepper and no quantity field. `subtotal`, `discountAmount` and `extendedAmount`
-  are the whole package; `grossPrice` is per unit, so do not multiply it. Item and batch lines have these
-  three fields `null`: branch on `packageQuantity !== null`.
+  `packageUom` — not `quantity uom`, where `uom` is the batch price unit — with no stepper and no
+  quantity field. `subtotal`, `discountAmount` and `extendedAmount` are the whole package; `grossPrice` is
+  per unit, so do not multiply it. Item and batch lines have these three fields `null`, and so does a
+  vanished package line: render a line with `packageQuantity !== null` as a package, and any other line
+  by its own state.
 - **When a package is gone** (`409 OfferUnavailable`, or a `GET /cart` line with `isOrderable: false` and
-  `lineErrorCode: "OfferUnavailable"`) say "This package is no longer available", remove the line by
+  `lineErrorCode: "OfferUnavailable"`, which comes back without its package fields) say "This package is no longer available", remove the line by
   replacing the cart without it, and offer to reload the package list, from the first page. The cart does
   not hold a package, so this can happen at checkout after a cart that looked fine: the first checkout
   wins. Do not word an added package as reserved.
