@@ -13,7 +13,8 @@ carries what is true about the *platform* and what you would otherwise discover 
 
 ```ts
 import {
-  getSession, getItems, getItem, getFilters,   // the four catalog reads
+  getSession, getItems, getItem, getFilters,   // the catalog reads
+  getPackages,                                 // one product's packages, when the seller sells them
   createItemPager,                             // walking the catalogue safely
   recommendedOffer, offerPrice,                // the offer model, made compile-checked
   IllumifyApiError,                            // every failure
@@ -22,16 +23,17 @@ import {
 } from "@illumify/sdk";
 ```
 
-Four `GET`s, and that is the entire data contract:
+Five `GET`s, and that is the entire data contract:
 
 ```ts
 getSession(options?):            Promise<CatalogSession>
 getItems(query?, options?):      Promise<CatalogItemsResponse>
 getItem(skuId, options?):        Promise<CatalogItemDetailResponse>
 getFilters(query?, options?):    Promise<CatalogFiltersResponse>
+getPackages(query, options?):    Promise<CatalogPackagesResponse>
 ```
 
-There is no fifth and **no write of any kind in this package**. `options` is `{ signal }`, ordinary
+There is no sixth and **no write of any kind in this package**. `options` is `{ signal }`, ordinary
 cancellation.
 
 **The cart and the checkout are not here, and they are not missing either.** They live on the injected
@@ -70,7 +72,7 @@ wrong.
 The SDK never composes one, which is why you cannot make this mistake through it. You can still make
 it with a raw `fetch`, so do not write one.
 
-All four **reads** exist under all four authorities with identical shapes, **including preview**. A
+All five **reads** exist under all four authorities with identical shapes, **including preview**. A
 theme is written once and never branches on the authority for data. The cart and checkout writes are
 the exception, and they are not in this package: they exist under three of the four, and a document
 served with `accessMode: "Preview"` has **none of** the four cart methods on its runtime at all — so a
@@ -180,6 +182,10 @@ by.
 off it and do not re-derive it.** A visible-but-unavailable SKU stays in the catalogue on purpose, so
 render the unavailable state rather than filtering it out.
 
+**`offers` can be `[]`, with `recommendedOfferId: null` and `available: false`**, on `getItems` and
+`getItem` alike. That is a product whose only sellable stock is single packages of a batch the seller
+turned off (Packages, below). A theme must neither crash on it (`offers[0]` is `undefined`) nor hide it.
+
 ### 6. Signing in is not a discount
 
 **`shopperContext: "Identified"` means an identity resolved, not that it matched a seller customer.**
@@ -225,9 +231,9 @@ The failures that *do* carry a code:
 
 | | |
 | --- | --- |
-| `409 CatalogRevisionChanged` | restart the walk — fact 2 |
+| `409 CatalogRevisionChanged` | restart the walk — fact 2 (and for `getPackages`, Packages below) |
 | `400 InvalidCursor` | the cursor belongs to a different walk — fact 2 |
-| `400 InvalidQuery` | a malformed or non-positive id, an unknown sort, a repeated scalar parameter |
+| `400 InvalidQuery` | a malformed or non-positive id, an unknown sort, a repeated scalar parameter; on `getPackages` a missing or bad `skuId`, `batchId` or `limit` |
 | `503 CatalogCapacityExceeded` | this storefront's catalogue is past the bounds the API will hydrate. A seller-side data condition, not a transient outage: retrying answers the same. Narrow the query |
 
 Every failure throws `IllumifyApiError` with `status`, `code` and `body` — the server's body exactly as
@@ -377,9 +383,109 @@ currency source. Read it rather than hardcoding it, but do not build a currency 
 claiming are not implemented, so that combination admits nobody and a login button there cannot
 succeed.
 
+## Packages: one exact, whole package
+
+A package is one physical unit of a batch — one tag. A buyer can buy it instead of an amount of the
+batch: the flow is **product → batch → packages**, the cart quantity of a package is always `1`, and the
+price is the batch offer's price times the package size, with the batch discount applied. Only
+unreserved packages are for sale. Packages are not offers on `getItem`; they come from their own read.
+
+### What the seller lists
+
+**The session carries no package setting: `getPackages` itself is the opt-in.** A theme that wants packages
+calls it on the product page, with the product and the batch the buyer picked, and never from the grid.
+**`items: []` means show no package section and no package controls.**
+
+The seller decides which packages appear — a hidden batch hides its packages — and that can change
+without a theme change. Render what comes back: do not filter it, and do not second-guess a package that
+is absent.
+
+### A product with packages and no offers
+
+A seller can turn a batch off and still list single packages of it. If those are all a product has,
+`/items` and `/items/{skuId}` return it with `offers: []`, `recommendedOfferId: null` and
+`available: false`, and `getPackages` is the only way to buy it. The same happens in part: a package can
+belong to a batch that has **no offer** on the page, so never look a package's `batchId` up in `offers`
+and treat a miss as an error.
+
+### `getPackages`
+
+```ts
+const page = await getPackages({ skuId: item.skuId, batchId: offer.batchId, limit: 50 });
+// page.items: CatalogPackage[]    page.nextCursor: string | null — null on the last page
+```
+
+**Call it on the product page, never on the grid** — on a grid that is one request per card. `skuId` is
+required. `batchId` narrows to the batch the buyer picked (`CatalogOffer.batchId` is `number | null`, so pass
+`offer.batchId ?? undefined`); omit it only to list every batch of the product, ordered by batch and
+then by package. `limit` is 1 to 100, 50 by default. A `skuId` or `batchId` that is not a positive
+integer, or a `limit` outside that range, throws a `RangeError` before anything is sent.
+
+**Every optional field is present and `T | null`; none is ever absent.** Test for `null`, not for
+`undefined`.
+
+| `CatalogPackage` field | What to know |
+| --- | --- |
+| `offerId`, `offerRevision` | Opaque. They go on the cart line as `offerId` and `observedOfferRevision`; never parse or compose them |
+| `batchId` | The same id as the batch offers on `getItem`, so it matches the batch the buyer picked |
+| `label` | The package's tag, or its name when it has no tag; `null` only when it has neither, so keep a fallback such as `batchName` |
+| `packageQuantity`, `packageUom` | The physical size, e.g. `2000.5` `"g"`. The quantity is a number; the unit can be `null` |
+| `pricingQuantity`, `pricingUom` | The same size in the unit `unitPrice` is quoted in, e.g. `70.5` `"oz"`. **It can carry many decimals: round it for display**, and never price from it |
+| `unitPrice` | The batch offer's gross price per `pricingUom` |
+| `discountPercent`, `effectiveUnitPrice` | As on an offer: the discount stays separate, and the net unit price is server-rounded |
+| `subtotal`, `discountAmount`, `packagePrice` | The **whole package**: before discount, the discount, and what the buyer pays. Display them; do not recompute |
+| `available`, `orderabilityCode` | `available: false` means the money fields are `null`. Offer Add only when `available`. The code says why: `Available`, `InsufficientInventory`, `MissingPrice`, `Expired`, `InvalidConversion` or `InvalidQuantity` — **and the pricing calculator can name others, or send `null`, so keep a default branch** rather than an exhaustive switch |
+| `testResult` | `null` when there is none. `source` is `"package"` for the package's own test and `"sourcePackage"` when it is the test of the package it was split from — say so. `expiresOn` is `yyyy-MM-dd` or `null`; `potency` has the shape it has on batch offers |
+
+Money is `null` and never `0` here exactly as in fact 4: `packagePrice ?? 0` renders an unpriced package
+as free.
+
+**Paging is yours: there is no pager for packages, so the theme walks `nextCursor` by hand.** It is
+`null` on the last page; otherwise send it back as-is, with the same `skuId`, `batchId` and `limit`, to
+get the next page. A batch can hold thousands of
+packages, so fetch the next page on demand and never walk them all up front. A different `batchId` or
+`limit` is a new walk and starts with no cursor.
+
+| Answer | Meaning | What the page does |
+| --- | --- | --- |
+| `200`, `items: []` | The product is visible and has no package for sale | Hide the package section; the buyer buys from the batch as before |
+| `404`, empty body | The product is hidden for this shopper, or the site is unknown | Handle it as `getItem`'s 404 |
+| `409 CatalogRevisionChanged` (`CatalogRevisionChangedError`) | The cursor is older than 15 minutes, or this buyer's prices changed (a new customer group, say) | Reload **once** from the first page and **discard what was accumulated**, as in fact 2. A second `409` straight after is an error state, not another reload |
+| `400 InvalidCursor` (`CatalogCursorRejectedError`) | The cursor belongs to a different query | A theme bug: send it back unchanged with the same query |
+| `400 InvalidQuery` | A missing or bad `skuId`, `batchId` or `limit` the SDK did not already refuse with a `RangeError` | A theme bug |
+
+### Adding a package, and what the cart says back
+
+The cart request is the one in the section below, with the package's own values and **`quantity: 1`
+always**:
+
+```ts
+{ offerId: pkg.offerId, observedOfferRevision: pkg.offerRevision, quantity: 1, customerFacilityKey }
+```
+
+plus the destination like any other line (`guestAllocationKey` for a guest). A package can be in the cart
+once, whatever the destination.
+
+Three fields are new on **every** cart line, `PUT` and `GET`, and are `null` on item and batch lines:
+`packageLabel`, `packageQuantity` and `packageUom`. On a package line `quantity` is `1`,
+`subtotal`, `discountAmount` and `extendedAmount` are the whole package, and `grossPrice` is the price per
+unit.
+
+| Answer | Meaning | What the page does |
+| --- | --- | --- |
+| `400 InvalidQuantity` | A quantity other than `1` on a package line | A theme bug: always send `1` |
+| `400 DuplicateOffer` | The same package on two lines | A theme bug |
+| `409 PricingChanged` | The price or size moved since the list | As for any offer: show the new number and let the buyer decide |
+| `409 OfferUnavailable` | The package was sold, reserved or put on hold, or is now larger than the free stock | Tell the buyer, drop the line, offer to reload the package list. `GET /cart` keeps such a line with `isOrderable: false` and `lineErrorCode: "OfferUnavailable"`, and with `packageLabel`, `packageQuantity` and `packageUom` all `null` — the backend does not repopulate them, so those fields cannot identify a vanished package line; render it like any unavailable line |
+| `409 InsufficientInventory` | The package and the other lines of its batch exceed the batch's stock | As for any offer |
+
+**The cart does not hold a package.** Two buyers can have the same package in their carts; the first
+checkout gets it and the second is refused with `409 OfferUnavailable`. So a package in a cart is not a
+reservation, and a page must not word it as one.
+
 ## Caching: prices are not cacheable
 
-`session` is served `private, no-store`. The list, detail and filters reads are `private, no-cache`
+`session` is served `private, no-store`. The list, detail, filters and packages reads are `private, no-cache`
 with weak ETags. **Nothing derived from a priced response belongs in `localStorage`,
 `sessionStorage`, or a service worker** — and a service worker is forbidden by the CSP anyway. Prices
 are resolved per request, for whoever asked.
@@ -404,6 +510,7 @@ are the ones a cart depends on:
   CatalogRevisionChanged` (fact 2), and a theme that treats either as an error is broken in the same
   way: show the new number, do not retry the refused body.
 - All destinations of one offer share stock, and line identity includes the destination key (fact 9).
+- A **package** line carries `quantity: 1` and holds nothing: see Packages, above.
 
 Invites and buyer enrolment remain outside this phase.
 
@@ -426,7 +533,7 @@ sets no `credentials` option so nobody "fixes" it to `include`.
 at best ignored and at worst changes which shopper the server resolves — a preview showing different
 prices than production, with nothing anywhere saying so.
 
-**If you need to reach an Illumify service operation that is not one of these four reads, that is not
+**If you need to reach an Illumify service operation that is not one of these five reads, that is not
 a storefront theme's job.** A deployed shopper holds no ERP session, so such a call cannot work for the
 audience the site is for. `illumify dev` can credit one during development from the owner's
 `ILLUMIFY_API_KEY` — the same key `upload` uses — **and `illumify skills get deploy` has that key's
@@ -442,7 +549,8 @@ somebody's live data.
 **`illumify dev --fixtures` is the other mode**, and it answers the catalogue plus an in-memory cart and
 checkout inside the CLI process: no link, credential, or request leaving the machine. Reach for it to build
 against shapes a live catalogue will not hand you on demand — `--fixtures empty` for the empty state,
-`--fixtures restart` for the `409` walk restart in fact 2, **`--fixtures facilities` for fact 9**, and
+`--fixtures restart` for the `409` walk restart in fact 2, **`--fixtures facilities` for fact 9**,
+`--fixtures packages` for the package list and its cart answers (Packages, above), and
 `--shopper-context identified` for customer pricing (which really changes the numbers there, unlike
 against a real environment).
 
