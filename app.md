@@ -630,11 +630,8 @@ the session is `InvalidCustomerFacility`.
 ## Selling packages: the product page, then the cart line
 
 A seller can sell **one exact, whole package** of a batch instead of an amount of it. `illumify skills get
-data` has the contract — `getPackages`, its answers, and `session.packageSalesEnabled`; this is how the
-screens fit it. It is advice, and the layout is yours.
+data` has the contract — `getPackages` and its answers; this is how the screens fit it. It is advice, and the layout is yours.
 
-- **Off means unchanged.** Read `session.packageSalesEnabled ?? false` once. While it is false, call
-  nothing and render nothing: no section, no empty state, no reserved space.
 - **The product page, not the grid.** Packages belong to a batch, so the section appears once the buyer
   has picked one, and `getPackages` is called there with that `skuId` and `batchId`. A grid calling it per
   card is a request per card. A new batch is a new request, with no cursor.
@@ -652,8 +649,9 @@ screens fit it. It is advice, and the layout is yours.
   batch can have thousands of packages, so do not fetch the rest ahead of the buyer. On
   `409 CatalogRevisionChanged` reload once from the first page and replace the list, not append to it.
   There is no pager for packages, so the list and the cursor are your page's own state.
-- **`items: []` means hide the section**, and the buyer buys from the batch as they do today. Do not
-  show "no packages".
+- **`items: []` means no package section and no package controls**: no empty state, no reserved space,
+  and the buyer buys from the batch as they do today. The seller decides which packages are listed, so
+  show what comes back and do not filter it or guess why one is missing.
 - **The cart line** is `packageLabel` as its name and "1 package · 2,000.5 g" from `packageQuantity` and
   `packageUom` — not `quantity uom`, where `uom` is the batch price unit — with no stepper and no
   quantity field. `subtotal`, `discountAmount` and `extendedAmount` are the whole package; `grossPrice` is
@@ -806,7 +804,7 @@ guessing the heavy one is the expensive mistake.
   and re-priced.
 - **Do not treat `409 PricingChanged` or `409 CartVersionConflict` as errors.** Both carry the current
   cart and both are instructions. Do not retry either with the body that was refused.
-- **Do not call `getPackages` while `session.packageSalesEnabled ?? false` is false, or from the grid**, and
+- **Do not call `getPackages` from the grid**, do not filter or second-guess the packages it returns, and
   do not put a quantity input or stepper on a package. A package line is `quantity: 1`; anything else is
   `400 InvalidQuantity`.
 - **Do not refetch the catalogue when a facility changes.** Facilities are per-line destinations over

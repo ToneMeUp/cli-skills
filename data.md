@@ -317,12 +317,12 @@ everything else is identical, so a detail view does not need the list response. 
 non-positive `skuId` throws a `RangeError` locally rather than reaching the server as a 404 that would
 read as "no such product".
 
-## `getSession()` — call it for the seven things the global does not carry
+## `getSession()` — call it for the six things the global does not carry
 
 `shopperContext` and `themeKey` are already on `window.IllumifyStorefront.config`, so a page that reads
 only those does not need this call. (`slug` is **not** on the injected config — nothing there names the
 site. It arrives here, and it is a label rather than something to build a URL from: every URL you need
-is already on `config`.) These seven are the reason to call:
+is already on `config`.) These six are the reason to call:
 
 | | |
 | --- | --- |
@@ -333,7 +333,6 @@ is already on `config`.) These seven are the reason to call:
 | `stateList` | The US states a **guest** may name a destination in, each `{ id, name, shortName }`, ordered by name. Submit the chosen `id` as `guestFacilityList[n].stateId`. **Empty for a signed-in or customer-link shopper** — they cannot submit a guest destination — so read its length before rendering the field. `illumify skills get app` has the whole rule |
 | `salesRep` | The rep on the seller's customer record the shopper matched: `{ name, email, phone }` with `email` and `phone` each nullable and no ids, or `null`. Below |
 | `salesRepOptionList` | On a public site whose company turned the pick on, the reps an anonymous shopper may pick, each `{ key, name }`; otherwise `[]`. Below |
-| `packageSalesEnabled` | The seller's switch for selling whole packages: read it as `session.packageSalesEnabled ?? false`. See Packages |
 
 ### The sales rep
 
@@ -387,12 +386,15 @@ batch: the flow is **product → batch → packages**, the cart quantity of a pa
 price is the batch offer's price times the package size, with the batch discount applied. Only
 unreserved packages are for sale. Packages are not offers on `getItem`; they come from their own read.
 
-### The seller's switch
+### What the seller lists
 
-**Read `session.packageSalesEnabled ?? false`, and never call `getPackages` while it is `false`.** It is
-the seller's setting for whether this storefront sells whole packages. An older backend does not send the
-key, so absent means off — and while it is off the page must behave exactly as a page that has never
-heard of packages: no call, no section, no empty state.
+**The session carries no package setting: `getPackages` itself is the opt-in.** A theme that wants packages
+calls it on the product page, with the product and the batch the buyer picked, and never from the grid.
+**`items: []` means show no package section and no package controls.**
+
+The seller decides which packages appear — a hidden batch hides its packages — and that can change
+without a theme change. Render what comes back: do not filter it, and do not second-guess a package that
+is absent.
 
 ### `getPackages`
 

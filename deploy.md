@@ -238,7 +238,7 @@ carries several offers across UOMs and batch grains, and the recommended offer i
 | `windowed` | 5,200 SKUs, so delivery is `windowed` and `nextCursor` has to be walked |
 | `restart` | `windowed`, and the revision moves once: one `409 CatalogRevisionChanged` on page two, then the walk completes |
 | **`facilities`** | A known customer with three per-line destinations over one fully priced catalogue |
-| `packages` | The mixed catalogue plus SKU 110, with `session.packageSalesEnabled: true` (every other scenario omits it). One batch has 120 packages, so `/packages` pages by `nextCursor`. One package is sold to somebody else after the first cart write that holds it: `GET /cart` flags the line `OfferUnavailable`, and the next write, prepare or checkout naming it is `409 OfferUnavailable`. `/packages` answers in every scenario |
+| `packages` | The mixed catalogue plus SKU 110, whose batches carry whole packages. One batch has 120 packages, so `/packages` pages by `nextCursor`. One package is sold to somebody else after the first cart write that holds it: `GET /cart` flags the line `OfferUnavailable`, and the next write, prepare or checkout naming it is `409 OfferUnavailable`. `/packages` answers in every scenario |
 | `pricing-change` | Offer revisions move after the first successful cart write |
 | `low-stock` | Shared stock is deliberately small across destinations |
 | `facility-removed` | One current facility disappears after a cart write |
