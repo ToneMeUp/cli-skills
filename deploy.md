@@ -214,7 +214,7 @@ either `--slug` or `--fixtures`, below.
 
 ```bash
 illumify dev --fixtures                 # the `catalog` scenario
-illumify dev --fixtures empty           # also: windowed, restart, facilities
+illumify dev --fixtures empty           # also: windowed, restart, facilities, packages
 illumify dev --fixtures pricing-change  # also: low-stock, facility-removed, pending-checkout
 illumify dev --fixtures --shopper-context identified
 ```
@@ -238,6 +238,7 @@ carries several offers across UOMs and batch grains, and the recommended offer i
 | `windowed` | 5,200 SKUs, so delivery is `windowed` and `nextCursor` has to be walked |
 | `restart` | `windowed`, and the revision moves once: one `409 CatalogRevisionChanged` on page two, then the walk completes |
 | **`facilities`** | A known customer with three per-line destinations over one fully priced catalogue |
+| `packages` | Packages for sale, with `session.packageSalesEnabled` on: the section, paging by `nextCursor`, the cart line, and `OfferUnavailable` |
 | `pricing-change` | Offer revisions move after the first successful cart write |
 | `low-stock` | Shared stock is deliberately small across destinations |
 | `facility-removed` | One current facility disappears after a cart write |

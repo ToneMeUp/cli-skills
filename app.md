@@ -35,7 +35,7 @@ These are Illumify rules, not a React style guide:
 
   Routes also match exactly and never fall through, so mirroring keeps a route without its module,
   and a module nobody declared, visible before a preview rather than as a silent 404.
-- **Keep catalogue access in one module.** Put the four `@illumify/sdk` catalogue reads and the
+- **Keep catalogue access in one module.** Put the `@illumify/sdk` catalogue reads and the
   pager in `src/catalog/`, then have pages call that module. Its `null` money,
   `recommendedOfferId` and `409`-restart rules are sharp; copies in components eventually render the
   wrong offer or restart pagination incorrectly, only for particular facilities or cursors.
@@ -627,6 +627,40 @@ drafts by that pair, send the complete set on every replacement, and sum all tho
 offer's one shared `availableQuantity`. An absent key is `FacilitySelectionRequired`; a key no longer in
 the session is `InvalidCustomerFacility`.
 
+## Selling packages: the product page, then the cart line
+
+A seller can sell **one exact, whole package** of a batch instead of an amount of it. `illumify skills get
+data` has the contract — `getPackages`, its answers, and `session.packageSalesEnabled`; this is how the
+screens fit it. It is advice, and the layout is yours.
+
+- **Off means unchanged.** Read `session.packageSalesEnabled ?? false` once. While it is false, call
+  nothing and render nothing: no section, no empty state, no reserved space.
+- **The product page, not the grid.** Packages belong to a batch, so the section appears once the buyer
+  has picked one, and `getPackages` is called there with that `skuId` and `batchId`. A grid calling it per
+  card is a request per card. A new batch is a new request, with no cursor.
+- **A package row** shows `label`, the size (`packageQuantity packageUom`), the test result, and
+  `packagePrice` — the whole package, not the unit price. When `testResult.source` is `"sourcePackage"`,
+  say "from source package": the test is the parent's, not the package's own. Show `expiresOn` and
+  potency the way the batch rows do. `pricingQuantity` can carry many decimals, so round it (two or three
+  places is plenty) and always say the unit beside it.
+- **One Add per package.** No quantity input and no stepper: a package is `1`, and a second one is a
+  different row. After it is added, turn that row's button into "In cart" rather than allowing another
+  Add — the same package twice in the cart is `400 DuplicateOffer`.
+- **Load more on demand.** Render the first page, and a "Load more" button while `nextCursor` is set. A
+  batch can have thousands of packages, so do not fetch the rest ahead of the buyer. On
+  `409 CatalogRevisionChanged` reload once from the first page and replace the list, not append to it.
+- **`items: []` means hide the section**, and the buyer buys from the batch as they do today. Do not
+  show "no packages".
+- **The cart line** is `packageLabel` as its name and "1 package · 2,000.5 g" from `packageQuantity` and
+  `packageUom`, with no stepper and no quantity field. `subtotal`, `discountAmount` and `extendedAmount`
+  are the whole package; `grossPrice` is per unit, so do not multiply it. Item and batch lines have these
+  three fields `null`: branch on `packageQuantity !== null`.
+- **When a package is gone** (`409 OfferUnavailable`, or a `GET /cart` line with `isOrderable: false` and
+  `lineErrorCode: "OfferUnavailable"`) say "This package is no longer available", remove the line by
+  replacing the cart without it, and offer to reload the package list, from the first page. The cart does
+  not hold a package, so this can happen at checkout after a cart that looked fine: the first checkout
+  wins. Do not word an added package as reserved.
+
 ## The Content Security Policy, measured
 
 Every theme document is served with this policy, and it is stricter than most people assume:
@@ -767,6 +801,9 @@ guessing the heavy one is the expensive mistake.
   and re-priced.
 - **Do not treat `409 PricingChanged` or `409 CartVersionConflict` as errors.** Both carry the current
   cart and both are instructions. Do not retry either with the body that was refused.
+- **Do not call `getPackages` while `session.packageSalesEnabled ?? false` is false, or from the grid**, and
+  do not put a quantity input or stepper on a package. A package line is `quantity: 1`; anything else is
+  `400 InvalidQuantity`.
 - **Do not refetch the catalogue when a facility changes.** Facilities are per-line destinations over
   one catalogue, not pricing selectors.
 - **Do not read `orderList[0]` as "the order".** One checkout produces one order per (source,
