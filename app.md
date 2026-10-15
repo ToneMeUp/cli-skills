@@ -632,6 +632,11 @@ the session is `InvalidCustomerFacility`.
 A seller can sell **one exact, whole package** of a batch instead of an amount of it. `illumify skills get
 data` has the contract — `getPackages` and its answers; this is how the screens fit it. It is advice, and the layout is yours.
 
+- **A product with no offers.** When `offers` is `[]` the grid keeps the product, with neutral wording
+  (no price, no "out of stock") and no `/packages` call. On its page there is no batch to pick, so call
+  `getPackages({ skuId })` without a `batchId` and show the packages, buyable as usual. If that list is
+  empty too, show the product as not available. A package can also belong to a batch with no offer on
+  the page, so do not require a matching batch row.
 - **The product page, not the grid.** Packages belong to a batch, so the section appears once the buyer
   has picked one, and `getPackages` is called there with that `skuId` and `batchId`. A grid calling it per
   card is a request per card. A new batch is a new request, with no cursor.

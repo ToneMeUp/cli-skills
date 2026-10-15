@@ -182,6 +182,10 @@ by.
 off it and do not re-derive it.** A visible-but-unavailable SKU stays in the catalogue on purpose, so
 render the unavailable state rather than filtering it out.
 
+**`offers` can be `[]`, with `recommendedOfferId: null` and `available: false`**, on `getItems` and
+`getItem` alike. That is a product whose only sellable stock is single packages of a batch the seller
+turned off (Packages, below). A theme must neither crash on it (`offers[0]` is `undefined`) nor hide it.
+
 ### 6. Signing in is not a discount
 
 **`shopperContext: "Identified"` means an identity resolved, not that it matched a seller customer.**
@@ -395,6 +399,14 @@ calls it on the product page, with the product and the batch the buyer picked, a
 The seller decides which packages appear — a hidden batch hides its packages — and that can change
 without a theme change. Render what comes back: do not filter it, and do not second-guess a package that
 is absent.
+
+### A product with packages and no offers
+
+A seller can turn a batch off and still list single packages of it. If those are all a product has,
+`/items` and `/items/{skuId}` return it with `offers: []`, `recommendedOfferId: null` and
+`available: false`, and `getPackages` is the only way to buy it. The same happens in part: a package can
+belong to a batch that has **no offer** on the page, so never look a package's `batchId` up in `offers`
+and treat a miss as an error.
 
 ### `getPackages`
 
