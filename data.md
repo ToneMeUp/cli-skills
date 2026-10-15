@@ -398,31 +398,37 @@ heard of packages: no call, no section, no empty state.
 
 ```ts
 const page = await getPackages({ skuId: item.skuId, batchId: offer.batchId, limit: 50 });
-// page.items: CatalogPackage[]    page.nextCursor?: string | null
+// page.items: CatalogPackage[]    page.nextCursor: string | null — null on the last page
 ```
 
 **Call it on the product page, never on the grid** — on a grid that is one request per card. `skuId` is
-required. `batchId` narrows to the batch the buyer picked; omit it only to list every batch of the
-product, ordered by batch and then by package. `limit` is 1 to 100, 50 by default.
+required. `batchId` narrows to the batch the buyer picked (`CatalogOffer.batchId` is `number | null`, so pass
+`offer.batchId ?? undefined`); omit it only to list every batch of the product, ordered by batch and
+then by package. `limit` is 1 to 100, 50 by default. A `skuId` or `batchId` that is not a positive
+integer, or a `limit` outside that range, throws a `RangeError` before anything is sent.
+
+**Every optional field is present and `T | null`; none is ever absent.** Test for `null`, not for
+`undefined`.
 
 | `CatalogPackage` field | What to know |
 | --- | --- |
 | `offerId`, `offerRevision` | Opaque. They go on the cart line as `offerId` and `observedOfferRevision`; never parse or compose them |
 | `batchId` | The same id as the batch offers on `getItem`, so it matches the batch the buyer picked |
-| `label` | The package's tag, or its name when it has no tag. Show it as the package's name |
-| `packageQuantity`, `packageUom` | The physical size, e.g. `2000.5` `"g"` |
+| `label` | The package's tag, or its name when it has no tag; `null` only when it has neither, so keep a fallback such as `batchName` |
+| `packageQuantity`, `packageUom` | The physical size, e.g. `2000.5` `"g"`. The quantity is a number; the unit can be `null` |
 | `pricingQuantity`, `pricingUom` | The same size in the unit `unitPrice` is quoted in, e.g. `70.5` `"oz"`. **It can carry many decimals: round it for display**, and never price from it |
 | `unitPrice` | The batch offer's gross price per `pricingUom` |
 | `discountPercent`, `effectiveUnitPrice` | As on an offer: the discount stays separate, and the net unit price is server-rounded |
 | `subtotal`, `discountAmount`, `packagePrice` | The **whole package**: before discount, the discount, and what the buyer pays. Display them; do not recompute |
-| `available`, `orderabilityCode` | `available: false` means the money fields are `null`. The code is one of `Available`, `InsufficientInventory`, `MissingPrice`, `Expired`, `InvalidConversion`, `InvalidQuantity`. Offer Add only when `available` |
+| `available`, `orderabilityCode` | `available: false` means the money fields are `null`. Offer Add only when `available`. The code says why: `Available`, `InsufficientInventory`, `MissingPrice`, `Expired`, `InvalidConversion` or `InvalidQuantity` — **and the pricing calculator can name others, or send `null`, so keep a default branch** rather than an exhaustive switch |
 | `testResult` | `null` when there is none. `source` is `"package"` for the package's own test and `"sourcePackage"` when it is the test of the package it was split from — say so. `expiresOn` is `yyyy-MM-dd` or `null`; `potency` has the shape it has on batch offers |
 
 Money is `null` and never `0` here exactly as in fact 4: `packagePrice ?? 0` renders an unpriced package
 as free.
 
-**Paging is yours; there is no pager.** `nextCursor` is present only when more exist — send it back as-is,
-with the same `skuId`, `batchId` and `limit`, to get the next page. A batch can hold thousands of
+**Paging is yours: there is no pager for packages, so the theme walks `nextCursor` by hand.** It is
+`null` on the last page; otherwise send it back as-is, with the same `skuId`, `batchId` and `limit`, to
+get the next page. A batch can hold thousands of
 packages, so fetch the next page on demand and never walk them all up front. A different `batchId` or
 `limit` is a new walk and starts with no cursor.
 
@@ -432,7 +438,7 @@ packages, so fetch the next page on demand and never walk them all up front. A d
 | `404`, empty body | The product is hidden for this shopper, or the site is unknown | Handle it as `getItem`'s 404 |
 | `409 CatalogRevisionChanged` (`CatalogRevisionChangedError`) | The cursor is older than 15 minutes, or this buyer's prices changed (a new customer group, say) | Reload **once** from the first page and **discard what was accumulated**, as in fact 2. A second `409` straight after is an error state, not another reload |
 | `400 InvalidCursor` (`CatalogCursorRejectedError`) | The cursor belongs to a different query | A theme bug: send it back unchanged with the same query |
-| `400 InvalidQuery` | A missing or bad `skuId`, `batchId` or `limit` | A theme bug |
+| `400 InvalidQuery` | A missing or bad `skuId`, `batchId` or `limit` the SDK did not already refuse with a `RangeError` | A theme bug |
 
 ### Adding a package, and what the cart says back
 

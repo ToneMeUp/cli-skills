@@ -638,17 +638,20 @@ screens fit it. It is advice, and the layout is yours.
 - **The product page, not the grid.** Packages belong to a batch, so the section appears once the buyer
   has picked one, and `getPackages` is called there with that `skuId` and `batchId`. A grid calling it per
   card is a request per card. A new batch is a new request, with no cursor.
-- **A package row** shows `label`, the size (`packageQuantity packageUom`), the test result, and
-  `packagePrice` — the whole package, not the unit price. When `testResult.source` is `"sourcePackage"`,
+- **A package row** shows `label`, the size (`packageQuantity packageUom`), the test result when `testResult` is
+  not `null`, and `packagePrice` — the whole package, not the unit price. When `testResult.source` is `"sourcePackage"`,
   say "from source package": the test is the parent's, not the package's own. Show `expiresOn` and
   potency the way the batch rows do. `pricingQuantity` can carry many decimals, so round it (two or three
   places is plenty) and always say the unit beside it.
+- **A package that is not `available`** has no price. Show why in words chosen by `orderabilityCode`,
+  with a neutral default for codes you do not know, and no Add.
 - **One Add per package.** No quantity input and no stepper: a package is `1`, and a second one is a
   different row. After it is added, turn that row's button into "In cart" rather than allowing another
   Add — the same package twice in the cart is `400 DuplicateOffer`.
-- **Load more on demand.** Render the first page, and a "Load more" button while `nextCursor` is set. A
+- **Load more on demand.** Render the first page, and a "Load more" button while `nextCursor` is not `null`. A
   batch can have thousands of packages, so do not fetch the rest ahead of the buyer. On
   `409 CatalogRevisionChanged` reload once from the first page and replace the list, not append to it.
+  There is no pager for packages, so the list and the cursor are your page's own state.
 - **`items: []` means hide the section**, and the buyer buys from the batch as they do today. Do not
   show "no packages".
 - **The cart line** is `packageLabel` as its name and "1 package · 2,000.5 g" from `packageQuantity` and
