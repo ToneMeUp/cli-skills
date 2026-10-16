@@ -16,8 +16,9 @@ ends at a build:
   select `.illumify/theme.zip` in Storefront's **Upload design** dialog in Illumify. That is the normal
   way a theme reaches Illumify, and it needs no link and no API key.
 - **The owner cannot reach your machine** (a cloud sandbox, a remote session): show, do not instruct.
-  Send screenshots (`npm run screenshot`, when it works) and deliver `.illumify/theme.zip` for them to
-  select in the same dialog. Give terminal steps only if they ask to run the project themselves, and
+  Send screenshots (`npm run screenshot -- --no-open`) and deliver `.illumify/theme.zip` for them to
+  select in the same dialog. A screenshot is optional evidence: if it fails or no browser is available,
+  say what you verified instead and carry on; that is not a stop. Give terminal steps only if they ask to run the project themselves, and
   first make sure the terminal is in the project folder. This is not an upload.
 - **Asked to upload:** run `npm run upload`. It needs a **linked storefront site** (`illumify link
   --profit-center <id>`) and **the API key** in the environment or the project's `.env`. If either is
@@ -778,7 +779,8 @@ storefront prefix answered a redirect, which is the signature of an unrouted pre
 404 from a document or catalog path is as likely to be that as anything in your project.
 
 When an Illumify command, the ERP or a credential fails, say what you ran, what you expected and what
-happened, and stop. Do not work around it by reaching into Illumify's own source, do not invent a
+happened, and stop. The exception is `illumify screenshot` / `npm run screenshot`, which fails when there
+is no browser: say what you verified instead and continue. Do not work around it by reaching into Illumify's own source, do not invent a
 credential to get past an error, and do not invent data to make a page render — a page showing invented
 products is worse than one showing an error.
 
