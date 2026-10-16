@@ -22,7 +22,7 @@ ends at a build:
   myself?", offer the no-terminal options first (the screenshot already shown, or selecting
   `.illumify/theme.zip` in the Upload design dialog), and give terminal steps only if they still
   want to run it. Then check the terminal line ends with the project folder's name, not `C:\>`; if
-  not, `cd /d "<folder path>"` (a real customer ran `npm install` at `C:\>` and got EPERM). This is
+  not, `cd /d "<folder path>"`. This is
   not an upload.
 - **Asked to upload:** run `npm run upload`. It needs a **linked storefront site** (`illumify link
   --profit-center <id>`) and **the API key** in the environment or the project's `.env`. Run it first:
