@@ -15,6 +15,10 @@ ends at a build:
 - **Not asked to upload — including asked *how* to upload:** run `npm run build`, then tell the owner to
   select `.illumify/theme.zip` in Storefront's **Upload design** dialog in Illumify. That is the normal
   way a theme reaches Illumify, and it needs no link and no API key.
+- **The owner cannot reach your machine** (a cloud sandbox, a remote session): show, do not instruct.
+  Send screenshots (`npm run screenshot`, when it works) and deliver `.illumify/theme.zip` for them to
+  select in the same dialog. Give terminal steps only if they ask to run the project themselves, and
+  first make sure the terminal is in the project folder. This is not an upload.
 - **Asked to upload:** run `npm run upload`. It needs a **linked storefront site** (`illumify link
   --profit-center <id>`) and **the API key** in the environment or the project's `.env`. If either is
   missing, say exactly which: ask the owner for the profit centre id, and ask them to set the key
@@ -686,8 +690,10 @@ result.
 in this transcript, and in any log or context store behind it, permanently — and it is a credential that
 never expires and cannot be scoped down. There is nothing you can do afterwards that un-leaks it.
 
-**If a command fails with 401 or reports no credential, stop and hand back.** The remedy is a human
-action at their own terminal, and the CLI prints the exact setting for it. Do not:
+**If an Illumify command fails with 401 or reports no credential, stop and hand back.** This blocks only
+real-data `dev` and `upload`, never fixture work, and it is about Illumify's credential, not your own
+tooling. The remedy is a human action at their own terminal, and the CLI prints the exact setting for
+it. Do not:
 
 - write the key into `.env`, `.env.example`, a shell profile, a script, or any file;
 - echo, log, or repeat the value anywhere, including "just to check it";
@@ -771,6 +777,12 @@ The shopper routes were **not yet proxied on the shared environments** when this
 storefront prefix answered a redirect, which is the signature of an unrouted prefix. So a redirect or a
 404 from a document or catalog path is as likely to be that as anything in your project.
 
-Say what you ran, what you expected and what happened, and stop. Do not work around a broken tool by
-reaching into Illumify's own source, do not invent a credential to get past an error, and do not invent
-data to make a page render — a page showing invented products is worse than one showing an error.
+When an Illumify command, the ERP or a credential fails, say what you ran, what you expected and what
+happened, and stop. Do not work around it by reaching into Illumify's own source, do not invent a
+credential to get past an error, and do not invent data to make a page render — a page showing invented
+products is worse than one showing an error.
+
+**Your own helper tooling is yours to fix or skip, without asking.** A missing Python package in a
+scratch script, a browser download that fails, a screenshot you cannot take: install the dependency,
+use another way, or leave it out. "Not linked to a storefront site" is expected and no reason to stop; it
+blocks only real-data `dev` and `upload`. Keep building and preview with `--fixtures`.
