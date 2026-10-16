@@ -21,10 +21,11 @@ ends at a build:
   say what you verified instead and carry on; that is not a stop. Give terminal steps only if they ask to run the project themselves, and
   first make sure the terminal is in the project folder. This is not an upload.
 - **Asked to upload:** run `npm run upload`. It needs a **linked storefront site** (`illumify link
-  --profit-center <id>`) and **the API key** in the environment or the project's `.env`. If either is
-  missing, say exactly which: ask the owner for the profit centre id, and ask them to set the key
-  themselves — never read, print, copy or write it, or request it in chat. Then report what the upload
-  printed, because it says whether a live site changed (below).
+  --profit-center <id>`) and **the API key** in the environment or the project's `.env`. Run it first:
+  you cannot tell from here whether the key is set. If the command reports no linked site, ask the
+  owner for the profit centre id; if it reports no credential or a rejected (401) key, ask them to set
+  the key themselves — never read, print, copy or write it, or request it in chat. Then report what the
+  upload printed, because it says whether a live site changed (below).
 
 ## The shape of the thing
 
@@ -698,7 +699,8 @@ the exact setting. Do not:
 - work around a missing credential by looking for one elsewhere on the machine.
 
 **Do not read the value of `ILLUMIFY_API_KEY` either — unless the owner directly tells you to.** That
-exception is theirs to give and it is real; short of it, ask them to set the key and stop. The existing
+exception is theirs to give and it is real; short of it, do not look at it: run the command, and only if
+it reports no credential or a rejected (401) key, ask them to set the key and stop. The existing
 rule about `.env` is that you must not *edit* it. This key adds: do not *read* it, and do not put it in
 a message, a commit, a log, or a note. A value that reaches a transcript is leaked permanently, and
 **this key does not expire**, so there is no point at which the leak stops mattering. Revocation is the
