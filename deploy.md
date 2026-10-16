@@ -56,17 +56,13 @@ What replaces "then open the URL" is a **hosted preview**: a short-lived capabil
 uploaded theme through the real renderer — real asset paths, real CSP, real pricing — without touching
 an assignment. `illumify upload` mints one by default.
 
-## Install the published CLI
+## Running the published CLI
 
-Use the package from npm without a global install:
-
-```bash
-npx --yes @illumify/cli@<version> <command>
-```
-
-For a project-local command, install it as a devDependency with `npm i -D @illumify/cli`, then use
-`npx illumify <command>` or the generated `illumify` scripts. A global install is also possible with
-`npm i -g @illumify/cli`; do not install the unscoped `illumify` package.
+Prefer the project's own npm scripts (`npm run dev`, `npm run build`, `npm run upload`): they already
+call the CLI. For anything they do not cover, use `npx illumify <command>`; it fetches the latest CLI
+and installs nothing. `illumify` is the package we own, and `@illumify/cli` is the same CLI under its
+scoped name, used only when the owner explicitly chooses it. Never install or run any other unscoped
+name (`illumify-cli` and the like): those are not ours.
 
 ### Two records, and they are not the same file
 
@@ -693,8 +689,9 @@ never expires and cannot be scoped down. There is nothing you can do afterwards 
 
 **If an Illumify command fails with 401 or reports no credential, stop and hand back.** This blocks only
 real-data `dev` and `upload`, never fixture work, and it is about Illumify's credential, not your own
-tooling. The remedy is a human action at their own terminal, and the CLI prints the exact setting for
-it. Do not:
+tooling. The remedy is the owner's: the key goes in the secret settings of the environment you run in
+(set by them or their admin), or at their own terminal if the project runs locally, and the CLI prints
+the exact setting. Do not:
 
 - write the key into `.env`, `.env.example`, a shell profile, a script, or any file;
 - echo, log, or repeat the value anywhere, including "just to check it";
