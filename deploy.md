@@ -18,13 +18,18 @@ ends at a build:
 - **The owner cannot reach your machine** (a cloud sandbox, a remote session): show, do not instruct.
   Send screenshots (`npm run screenshot -- --no-open`) and deliver `.illumify/theme.zip` for them to
   select in the same dialog. A screenshot is optional evidence: if it fails or no browser is available,
-  say what you verified instead and carry on; that is not a stop. Give terminal steps only if they ask to run the project themselves, and
-  first make sure the terminal is in the project folder. This is not an upload.
+  say what you verified instead and carry on; that is not a stop. If they ask "how do I see it
+  myself?", offer the no-terminal options first (the screenshot already shown, or selecting
+  `.illumify/theme.zip` in the Upload design dialog), and give terminal steps only if they still
+  want to run it. Then check the terminal line ends with the project folder's name, not `C:\>`; if
+  not, `cd /d "<folder path>"` (a real customer ran `npm install` at `C:\>` and got EPERM). This is
+  not an upload.
 - **Asked to upload:** run `npm run upload`. It needs a **linked storefront site** (`illumify link
   --profit-center <id>`) and **the API key** in the environment or the project's `.env`. Run it first:
   you cannot tell from here whether the key is set. If the command reports no linked site, ask the
   owner for the profit centre id; if it reports no credential or a rejected (401) key, ask them to set
-  the key themselves — never read, print, copy or write it, or request it in chat. Then report what the
+  the key themselves (and remind them they can select `.illumify/theme.zip` in the Upload design
+  dialog meanwhile) — never read, print, copy or write it, or request it in chat. Then report what the
   upload printed, because it says whether a live site changed (below).
 
 ## The shape of the thing
