@@ -782,11 +782,15 @@ The shopper routes were **not yet proxied on the shared environments** when this
 storefront prefix answered a redirect, which is the signature of an unrouted prefix. So a redirect or a
 404 from a document or catalog path is as likely to be that as anything in your project.
 
-When an Illumify command, the ERP or a credential fails, say what you ran, what you expected and what
-happened, and stop. The exception is `illumify screenshot` / `npm run screenshot`, which fails when there
-is no browser: say what you verified instead and continue. Do not work around it by reaching into Illumify's own source, do not invent a
-credential to get past an error, and do not invent data to make a page render — a page showing invented
-products is worse than one showing an error.
+When the Illumify CLI, `npm install`, the network, the ERP or a credential fails, say what you ran,
+what you expected and what happened, and stop. The exception is `illumify screenshot` /
+`npm run screenshot`, which fails when there is no browser: say what you verified instead and
+continue. Do not work around it by reaching into Illumify's own source, do not invent a credential to
+get past an error, and do not invent data to make a page render — a page showing invented products is
+worse than one showing an error.
+
+**An error in code you wrote is not that.** A type error, a lint error or a failed build of your own
+pages is yours to fix: fix it and run the command again, without asking.
 
 **Your own helper tooling is yours to fix or skip, without asking.** A missing Python package in a
 scratch script, a browser download that fails, a screenshot you cannot take: install the dependency,
