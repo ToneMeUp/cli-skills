@@ -70,7 +70,8 @@ else to the site.
 
 So nothing in this project names the site. `illumify link` asks the ERP and records the answer in
 `illumify.link.json`, which is committed. "Not linked to a storefront site" is an expected state, not
-a broken one — ask the owner for the **profit centre id**. The ERP resolves the root company and slug; do not guess either.
+a broken one, and no reason to stop: it blocks only real-data `dev` and `upload`, so keep building and
+preview with `--fixtures`. Ask the owner for the **profit centre id** when you need to link. The ERP resolves the root company and slug; do not guess either.
 
 ## `illumify.config.ts`
 

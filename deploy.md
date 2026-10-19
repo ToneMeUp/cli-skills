@@ -15,11 +15,22 @@ ends at a build:
 - **Not asked to upload — including asked *how* to upload:** run `npm run build`, then tell the owner to
   select `.illumify/theme.zip` in Storefront's **Upload design** dialog in Illumify. That is the normal
   way a theme reaches Illumify, and it needs no link and no API key.
+- **The owner cannot reach your machine** (a cloud sandbox, a remote session): show, do not instruct.
+  Send screenshots (`npm run screenshot -- --no-open`) and deliver `.illumify/theme.zip` for them to
+  select in the same dialog. A screenshot is optional evidence: if it fails or no browser is available,
+  say what you verified instead and carry on; that is not a stop. If they ask "how do I see it
+  myself?", offer the no-terminal options first (the screenshot already shown, or selecting
+  `.illumify/theme.zip` in the Upload design dialog), and give terminal steps only if they still
+  want to run it. Then check the terminal line ends with the project folder's name, not `C:\>`; if
+  not, `cd /d "<folder path>"`. This is
+  not an upload.
 - **Asked to upload:** run `npm run upload`. It needs a **linked storefront site** (`illumify link
-  --profit-center <id>`) and **the API key** in the environment or the project's `.env`. If either is
-  missing, say exactly which: ask the owner for the profit centre id, and ask them to set the key
-  themselves — never read, print, copy or write it, or request it in chat. Then report what the upload
-  printed, because it says whether a live site changed (below).
+  --profit-center <id>`) and **the API key** in the environment or the project's `.env`. Run it first:
+  you cannot tell from here whether the key is set. If the command reports no linked site, ask the
+  owner for the profit centre id; if it reports no credential or a rejected (401) key, ask them to set
+  the key themselves (and remind them they can select `.illumify/theme.zip` in the Upload design
+  dialog meanwhile) — never read, print, copy or write it, or request it in chat. Then report what the
+  upload printed, because it says whether a live site changed (below).
 
 ## The shape of the thing
 
@@ -51,17 +62,13 @@ What replaces "then open the URL" is a **hosted preview**: a short-lived capabil
 uploaded theme through the real renderer — real asset paths, real CSP, real pricing — without touching
 an assignment. `illumify upload` mints one by default.
 
-## Install the published CLI
+## Running the published CLI
 
-Use the package from npm without a global install:
-
-```bash
-npx --yes @illumify/cli@<version> <command>
-```
-
-For a project-local command, install it as a devDependency with `npm i -D @illumify/cli`, then use
-`npx illumify <command>` or the generated `illumify` scripts. A global install is also possible with
-`npm i -g @illumify/cli`; do not install the unscoped `illumify` package.
+Prefer the project's own npm scripts (`npm run dev`, `npm run build`, `npm run upload`): they already
+call the CLI. For anything they do not cover, use `npx illumify <command>`; it fetches the latest CLI
+and installs nothing. `illumify` is the package we own, and `@illumify/cli` is the same CLI under its
+scoped name, used only when the owner explicitly chooses it. Never install or run any other unscoped
+name (`illumify-cli` and the like): those are not ours.
 
 ### Two records, and they are not the same file
 
@@ -686,15 +693,19 @@ result.
 in this transcript, and in any log or context store behind it, permanently — and it is a credential that
 never expires and cannot be scoped down. There is nothing you can do afterwards that un-leaks it.
 
-**If a command fails with 401 or reports no credential, stop and hand back.** The remedy is a human
-action at their own terminal, and the CLI prints the exact setting for it. Do not:
+**If an Illumify command fails with 401 or reports no credential, stop and hand back.** This blocks only
+real-data `dev` and `upload`, never fixture work, and it is about Illumify's credential, not your own
+tooling. The remedy is the owner's: the key goes in the secret settings of the environment you run in
+(set by them or their admin), or at their own terminal if the project runs locally, and the CLI prints
+the exact setting. Do not:
 
 - write the key into `.env`, `.env.example`, a shell profile, a script, or any file;
 - echo, log, or repeat the value anywhere, including "just to check it";
 - work around a missing credential by looking for one elsewhere on the machine.
 
 **Do not read the value of `ILLUMIFY_API_KEY` either — unless the owner directly tells you to.** That
-exception is theirs to give and it is real; short of it, ask them to set the key and stop. The existing
+exception is theirs to give and it is real; short of it, do not look at it: run the command, and only if
+it reports no credential or a rejected (401) key, ask them to set the key and stop. The existing
 rule about `.env` is that you must not *edit* it. This key adds: do not *read* it, and do not put it in
 a message, a commit, a log, or a note. A value that reaches a transcript is leaked permanently, and
 **this key does not expire**, so there is no point at which the leak stops mattering. Revocation is the
@@ -771,6 +782,17 @@ The shopper routes were **not yet proxied on the shared environments** when this
 storefront prefix answered a redirect, which is the signature of an unrouted prefix. So a redirect or a
 404 from a document or catalog path is as likely to be that as anything in your project.
 
-Say what you ran, what you expected and what happened, and stop. Do not work around a broken tool by
-reaching into Illumify's own source, do not invent a credential to get past an error, and do not invent
-data to make a page render — a page showing invented products is worse than one showing an error.
+When the Illumify CLI, `npm install`, the network, the ERP or a credential fails, say what you ran,
+what you expected and what happened, and stop. The exception is `illumify screenshot` /
+`npm run screenshot`, which fails when there is no browser: say what you verified instead and
+continue. Do not work around it by reaching into Illumify's own source, do not invent a credential to
+get past an error, and do not invent data to make a page render — a page showing invented products is
+worse than one showing an error.
+
+**An error in code you wrote is not that.** A type error, a lint error or a failed build of your own
+pages is yours to fix: fix it and run the command again, without asking.
+
+**Your own helper tooling is yours to fix or skip, without asking.** A missing Python package in a
+scratch script, a browser download that fails, a screenshot you cannot take: install the dependency,
+use another way, or leave it out. "Not linked to a storefront site" is expected and no reason to stop; it
+blocks only real-data `dev` and `upload`. Keep building and preview with `--fixtures`.
