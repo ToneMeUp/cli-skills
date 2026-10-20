@@ -641,6 +641,9 @@ data` has the contract — `getPackages` and its answers; this is how the screen
 - **The product page, not the grid.** Packages belong to a batch, so the section appears once the buyer
   has picked one, and `getPackages` is called there with that `skuId` and `batchId`. A grid calling it per
   card is a request per card. A new batch is a new request, with no cursor.
+  Put the packages under the card whose `packagesPricedHere` is `true` (not `isDefault`). For packages
+  of batches with no card, call `getPackages({ skuId, batchesWithoutOffers: true })` once for the product,
+  never with a `batchId`, and keep its cursor apart from the per-batch ones.
 - **A package row** shows `label`, the size (`packageQuantity packageUom`), the test result when `testResult` is
   not `null`, and `packagePrice` — the whole package, not the unit price. When `testResult.source` is `"sourcePackage"`,
   say "from source package": the test is the parent's, not the package's own. Show `expiresOn` and
