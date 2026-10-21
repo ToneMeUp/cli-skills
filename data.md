@@ -421,6 +421,17 @@ required. `batchId` narrows to the batch the buyer picked (`CatalogOffer.batchId
 then by package. `limit` is 1 to 100, 50 by default. A `skuId` or `batchId` that is not a positive
 integer, or a `limit` outside that range, throws a `RangeError` before anything is sent.
 
+**Which card prices a batch's packages.** `CatalogOffer.packagesPricedHere` is `true` on exactly one offer
+per batch: the card whose price a whole package of that batch is sold at (the same rule `getPackages` uses, so
+they always agree). Put the batch's packages under that card. It is **not** `isDefault`, the product-wide pick,
+which can be true on several offers or none of a batch. An offer with no batch is always `false`.
+
+**Packages of batches without a card.** `getPackages({ skuId, batchesWithoutOffers: true })` returns only the
+packages of batches that have no visible offer for the shopper, in one paged read, so a theme need not page
+through every package of the product to find them. Never combine it with `batchId`: that is
+`400 InvalidQuery`, and the SDK throws a `RangeError` first. Its cursors are separate: a cursor from the
+normal read is `400 InvalidCursor` here, so keep one cursor per mode. Without the option nothing changes.
+
 **Every optional field is present and `T | null`; none is ever absent.** Test for `null`, not for
 `undefined`.
 
@@ -441,7 +452,7 @@ Money is `null` and never `0` here exactly as in fact 4: `packagePrice ?? 0` ren
 as free.
 
 **Paging is yours: there is no pager for packages, so the theme walks `nextCursor` by hand.** It is
-`null` on the last page; otherwise send it back as-is, with the same `skuId`, `batchId` and `limit`, to
+`null` on the last page; otherwise send it back as-is, with the same `skuId`, `batchId`, `batchesWithoutOffers` and `limit`, to
 get the next page. A batch can hold thousands of
 packages, so fetch the next page on demand and never walk them all up front. A different `batchId` or
 `limit` is a new walk and starts with no cursor.
@@ -451,8 +462,8 @@ packages, so fetch the next page on demand and never walk them all up front. A d
 | `200`, `items: []` | The product is visible and has no package for sale | Hide the package section; the buyer buys from the batch as before |
 | `404`, empty body | The product is hidden for this shopper, or the site is unknown | Handle it as `getItem`'s 404 |
 | `409 CatalogRevisionChanged` (`CatalogRevisionChangedError`) | The cursor is older than 15 minutes, or this buyer's prices changed (a new customer group, say) | Reload **once** from the first page and **discard what was accumulated**, as in fact 2. A second `409` straight after is an error state, not another reload |
-| `400 InvalidCursor` (`CatalogCursorRejectedError`) | The cursor belongs to a different query | A theme bug: send it back unchanged with the same query |
-| `400 InvalidQuery` | A missing or bad `skuId`, `batchId` or `limit` the SDK did not already refuse with a `RangeError` | A theme bug |
+| `400 InvalidCursor` (`CatalogCursorRejectedError`) | The cursor belongs to a different query, including the other `batchesWithoutOffers` mode | A theme bug: send it back unchanged with the same query |
+| `400 InvalidQuery` | A missing or bad `skuId`, `batchId` or `limit`, or `batchesWithoutOffers: true` with a `batchId`, the SDK did not already refuse with a `RangeError` | A theme bug |
 
 ### Adding a package, and what the cart says back
 
