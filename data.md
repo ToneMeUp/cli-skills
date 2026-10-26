@@ -281,6 +281,23 @@ filename, a `skuId`, or anything in the theme's own assets. `assetBaseUrl` serve
 files** and never product media. If `primaryImage` is `null`, there is no image — render a placeholder
 you shipped in the theme.
 
+**A batch can have its own photos.** `getItems()` and `getItem()` items carry
+`batchImages: { batchId, primaryImage, imageList }[]`. Read it as `item.batchImages ?? []`: an older
+environment omits it. An entry exists only for a batch that has a Marketplace photo **and** an offer in the
+same item, and `batchId` matches `CatalogOffer.batchId`. The list sends only the batch's first photo
+(`imageList: []`); the detail sends all of them, with `imageList[0]` equal to `primaryImage`. Use `url` as
+is, as above.
+
+**Let the SDK apply the fallback.** `offerImage(item, offer)` returns the batch's `primaryImage`, or
+`item.primaryImage` when the offer has no entry or is item stock (`batchId: null`); `null` still means a
+placeholder. `offerImageList(item, offer)` does the same for a gallery: the batch's `imageList` (or
+`[primaryImage]` when the list sent none), else the item's own. Both take `null` for no offer.
+
+- **A card with no batch selected keeps `item.primaryImage`.** Never pick a batch photo for the shopper.
+- **The product page carousel follows the selected offer**: `offerImageList(detail.item, selectedOffer)`.
+  Reset the carousel position when the list changes.
+- **Packages carry no batch photos.** A package row or view keeps the item photo.
+
 ## Filtering and search
 
 ```ts
