@@ -278,8 +278,9 @@ that needs them must handle their absence.
 
 **A theme cannot construct one of these URLs**, and must not try: media is never inferred from a
 filename, a `skuId`, or anything in the theme's own assets. `assetBaseUrl` serves **this theme's own
-files** and never product media. If `primaryImage` is `null`, there is no image — render a placeholder
-you shipped in the theme.
+files** and never product media. If the photo you show is `null` (`item.primaryImage` for an item view,
+`offerImage(item, offer)` for a picked offer), there is no image — render a placeholder you shipped in
+the theme.
 
 **A batch can have its own photos.** `getItems()` and `getItem()` items carry
 `batchImages: { batchId, primaryImage, imageList }[]`. Read it as `item.batchImages ?? []`: an older
