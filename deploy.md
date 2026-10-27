@@ -240,7 +240,7 @@ carries several offers across UOMs and batch grains, and the recommended offer i
 
 | Scenario | What it is for |
 | --- | --- |
-| `catalog` (the default) | Eight SKUs with all of the above on screen at once |
+| `catalog` (the default) | Ten SKUs with all of the above on screen at once. Every item carries `batchImages` (`[]` when none; the list keeps the first photo with `imageList: []`, the detail every photo). SKU 115 has an item photo, an item-stock offer, batch `88120` with three photos and two offers (g and lb) and batch `88121` with no photo; SKU 116 has no item photo and one batch photo |
 | `empty` | `items: []`, every facet empty — the case a grid built against three tidy products gets wrong first |
 | `windowed` | 5,200 SKUs, so delivery is `windowed` and `nextCursor` has to be walked |
 | `restart` | `windowed`, and the revision moves once: one `409 CatalogRevisionChanged` on page two, then the walk completes |
