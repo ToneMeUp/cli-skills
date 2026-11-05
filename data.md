@@ -17,6 +17,7 @@ import {
   getPackages,                                 // one product's packages, when the seller sells them
   createItemPager,                             // walking the catalogue safely
   recommendedOffer, offerPrice,                // the offer model, made compile-checked
+  customerOffers,                              // a group link: one store's offers
   IllumifyApiError,                            // every failure
   CatalogRevisionChangedError,                 // 409 — restart the walk
   CatalogCursorRejectedError,                  // 400 InvalidCursor — a new query is a new walk
@@ -511,6 +512,33 @@ unit.
 **The cart does not hold a package.** Two buyers can have the same package in their carts; the first
 checkout gets it and the second is refused with `409 OfferUnavailable`. So a package in a cart is not a
 reservation, and a page must not word it as one.
+
+## Selling groups: one link, several stores
+
+A **group link** is a private customer link for a selling group of several stores (separate customers),
+and it is the only session with `session.buyingScope`. Everything below is absent on every other
+response, which is byte-identical to before. The group-mode rule for a theme is in `illumify skills get
+app` ("A group link").
+
+- **`session.buyingScope.customerList`**: one `{ customerKey, customerName?, destinationList }` per store,
+  in store order. `customerKey` is opaque: send it back, never parse it. `facilityList` holds every store's
+  destinations together; there is no group name.
+- **`item.customerOfferGroupList`** (list and detail): `{ customerKey, offerList }[]`, one entry per store
+  that can buy the item. On a group link `offers` is `[]` and `recommendedOfferId` is `null`, so
+  `recommendedOffer(item)` is `undefined`: there is no recommendation. **A store with no entry cannot buy
+  the item: show "Not available"** for it.
+- **`customerOffers(item, customerKey)`** returns that store's `offerList`, or `[]` when it has no entry.
+  `offerImage(item, offer)` works with a store's offer.
+- **`getPackages({ skuId, customerKey })`**: one store per call. `customerKey` is required on a group link
+  (missing or unknown is `400 InvalidQuery`; a cursor from another store is `400 InvalidCursor`) and must be
+  omitted otherwise (an empty string throws `RangeError`). The response has today's shape, priced for that
+  store.
+- **`getItems` on a group link returns the complete list with `nextCursor: null`**; totals and filters cover
+  all stores together, and a price sort uses the first store's price.
+- **The cart line's `customerFacilityKey` (a destination of that store) picks the store.** Send the
+  `offerId` from that store's offer group; each line is priced and checked for its destination's store, and
+  a whole package can sit in one store's cart lines only. `checkout` returns one order per store location:
+  show all of `orderList`.
 
 ## Caching: prices are not cacheable
 

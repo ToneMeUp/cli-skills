@@ -223,6 +223,7 @@ either `--slug` or `--fixtures`, below.
 illumify dev --fixtures                 # the `catalog` scenario
 illumify dev --fixtures empty           # also: windowed, restart, facilities, packages
 illumify dev --fixtures pricing-change  # also: low-stock, facility-removed, pending-checkout
+illumify dev --fixtures selling-group   # a multi-store group link
 illumify dev --fixtures --shopper-context identified
 ```
 
@@ -246,6 +247,7 @@ carries several offers across UOMs and batch grains, and the recommended offer i
 | `restart` | `windowed`, and the revision moves once: one `409 CatalogRevisionChanged` on page two, then the walk completes |
 | **`facilities`** | A known customer with three per-line destinations over one fully priced catalogue |
 | `packages` | The mixed catalogue plus SKU 110, whose batches carry whole packages. One batch has 120 packages, so `/packages` pages by `nextCursor`. One package is sold to somebody else after the first cart write that holds it: `GET /cart` flags the line `OfferUnavailable`, and the next write, prepare or checkout naming it is `409 OfferUnavailable`. `/packages` answers in every scenario. Every offer carries `packagesPricedHere` (true on one offer per batch, the one that prices the batch's packages); SKU 114 has a batch with two cards where the second (pounds) prices packages, and a batch of 60 packages with no card, which `/packages?skuId=114&batchesWithoutOffers=true` lists in two pages. The scenario also has a product that has only packages (`offers: []`, `available: false`) and one with `offers: []` and nothing for sale |
+| `selling-group` | A group link: `accessMode: CustomerLink`, `session.buyingScope` with three stores (one with two destinations), items with `offers: []`, `recommendedOfferId: null` and per-store `customerOfferGroupList` at different prices, an item one store cannot buy, a complete item list with no cursor, `/packages` needing a valid `customerKey`, a cart that prices each line by its destination's store, and a checkout with one order per store location. `illumify skills get data` has the contract |
 | `pricing-change` | Offer revisions move after the first successful cart write |
 | `low-stock` | Shared stock is deliberately small across destinations |
 | `facility-removed` | One current facility disappears after a cart write |
