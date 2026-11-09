@@ -229,7 +229,7 @@ window.IllumifyStorefront = {
   navigate,            // (route: string) => void — a full document load
   routeUrl,            // (route: string) => URL  — the same URL, without going there
   login,               // (() => void) | null
-  logout,              // (() => void | Promise<void>) | null
+  logout,              // (() => void) | null            — set only on a signed-in account document
   getCart,             // () => Promise<Cart>             — ABSENT under Preview
   replaceCart,         // (body) => Promise<Cart>          — ABSENT under Preview
   prepareCheckout,     // (body) => Promise<Prepared>      — ABSENT under Preview
@@ -336,21 +336,21 @@ the difference between them and the route attribute has its own section below.
 
 - `login` is `null` on a preview document, on an already-signed-in (`_account`) document, and on a
   site that has sign-in disabled;
-- `logout` is `null` unless the document is a customer-link or an account one;
+- `logout` is `null` unless the document is a signed-in account (`_account`) one. **A customer link
+  has no logout**: the link itself is the credential, so there is nothing to sign out of, and only
+  the seller can revoke or replace it;
 - **both are `null` under `illumify dev`**, because the auth bridge is a deployed route.
 
 So guard before calling (`IllumifyStorefront.login?.()`), and expect the attribute's click to be
 handled and do nothing in those cases. **That is not a reason to build a sign-in of your own.**
 
-The two calls are not symmetrical, which matters if you call them rather than using the attributes:
-`login` navigates and returns nothing, while `logout` on a customer-link document is `async` — it
-POSTs, throws a plain `Error` on a non-2xx, then navigates. The delegated click handler discards that
-promise, so a failed logout from a button is an unhandled rejection and nothing on screen.
+Both calls navigate and return nothing.
 
 ### Which of the two buttons shows is your page's only decision
 
 `accessMode` tells you how the shopper arrived; `IllumifyStorefront.config.shopperContext` tells you
-whether an identity resolved. Either will do for the toggle. What you must not do is build a page that
+whether an identity resolved. Either will do for the toggle, but **show Sign out only when `IllumifyStorefront.logout !== null`**:
+a customer-link shopper is `"Identified"` and has no logout. What you must not do is build a page that
 only works under one site policy — the policy is the seller's and they can change it without touching
 your project. `getSession()` returns the site's `accessPolicy` if you want to hide a sign-in button
 the site does not offer; `illumify skills get data` has it.
