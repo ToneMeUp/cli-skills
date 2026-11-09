@@ -92,6 +92,7 @@ export default {
 | `pages[].route` | Starts with `/`. A trailing slash is stripped; `/` alone is the home page, and **one page must declare it**. At most 256 characters, at most 256 pages. **Case is preserved and matching is case-insensitive**, so two routes differing only in case are one route and declaring both is an error. Rejected: `//`, `.` and `..` segments, `\`, `?`, `#`, `%`, control characters, and anything under the eight reserved first segments below |
 | `pages[].entry` | Path of an `.html` or `.htm` file **in the build output** (`dist/`), not in `src/`. Relative, no `..`. Several routes may share one entry |
 | `previewImage` | Optional. A path in the build output, recorded on the theme as a thumbnail. It must exist in the output or the upload is refused |
+| `multiStore` | Optional boolean. `true` marks the theme as able to render a selling-group link; written to the manifest only when true. Anything but a boolean is an error. See "A group link" below |
 | `build.script` | Optional. The `package.json` script that produces the static site. Defaults to `build:app` |
 | `build.outDir` | Optional. Where that script writes. Defaults to `dist` |
 
@@ -546,6 +547,17 @@ After a successful checkout, `getCart()` returns that cart's **frozen snapshot**
 an error — so a shopper who refreshes their confirmation page still sees what they ordered. Writing to a
 checked-out cart is `409 CartCheckedOut`, so a shopper who wants to buy again starts a fresh cart with a
 `null` `cartVersion`. Reading a cart that never existed or has expired is an empty cart, not an error.
+
+### A group link: `multiStore`, and the mode is `buyingScope`
+
+A private link for a selling group of several stores opens **only when the site's default design has
+`multiStore: true`** in its config; otherwise it does not open. The same design also serves public and
+one-store links, so a theme must key group mode on **`session.buyingScope` being present**, never on the
+number of stores (a group with one store left still gets group screens), and keep today's screens and
+requests when it is absent. Cart actions are hidden in Preview, as for any theme (a seller's Preview of a
+group shows the catalogue only). One group checkout returns one order per store location, as above. The
+data shapes (`buyingScope`, `customerOfferGroupList`, `customerOffers`, packages `customerKey`) are in
+`illumify skills get data`; try them with `illumify dev --fixtures selling-group`.
 
 ### Two kinds of buyer, and the difference decides what you build
 
